@@ -1,0 +1,180 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMINISTRADOR
+  FUNCIONARIO
+}
+
+enum Status {
+  PENDENTE
+  EM_ANDAMENTO
+  PRONTO_PARA_RETIRADA
+  ENTREGUE
+}
+
+model User {
+  id                    String                   @id @default(uuid())
+  name                  String
+  email                 String                   @unique
+  password              String
+  role                  Role                     @default(FUNCIONARIO)
+  
+  externalServices      ExternalService[]        @relation("TechsOnExternal")
+  internalMaintenances  InternalMaintenance[]    @relation("TechsOnInternal")
+  
+  externalLogs          ExternalServiceLog[]
+  internalLogs          InternalMaintenanceLog[]
+}
+
+model Sector {
+  id                    String                   @id @default(uuid())
+  name                  String                   @unique
+  externalServices      ExternalService[]
+  internalMaintenances  InternalMaintenance[]
+  
+  // Relacionamentos de Infraestrutura
+  printers              Printer[]
+  routers               Router[]
+  ipRanges              IpRange[]
+  remoteAccesses        RemoteAccess[] // <-- CONEXÃO CORRIGIDA AQUI
+
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @default(now()) @updatedAt
+}
+
+// ----------------------------------------------------
+// TABELAS DE INFRAESTRUTURA (INFORMAÇÕES ÚTEIS)
+// ----------------------------------------------------
+
+model Printer {
+  id        String   @id @default(uuid())
+  model     String
+  ipAddress String
+  
+  sectorId  String
+  sector    Sector   @relation(fields: [sectorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model Router {
+  id          String   @id @default(uuid())
+  networkName String   
+  password    String   
+  
+  sectorId    String
+  sector      Sector   @relation(fields: [sectorId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+}
+
+// ----------------------------------------------------
+// TABELAS DE CHAMADOS E EQUIPAMENTOS
+// ----------------------------------------------------
+
+model DeviceType {
+  id                    String                   @id @default(uuid())
+  name                  String                   @unique
+  internalMaintenances  InternalMaintenance[]
+}
+
+model ExternalService {
+  id                    String                   @id @default(uuid())
+  sectorId              String
+  sector                Sector                   @relation(fields: [sectorId], references: [id])
+  personAttended        String
+  userEmail             String
+  description           String?                   
+  status                Status                   @default(PENDENTE)
+  createdAt             DateTime                 @default(now()) 
+  updatedAt             DateTime                 @updatedAt
+
+  techs                 User[]                   @relation("TechsOnExternal") 
+  logs                  ExternalServiceLog[]
+}
+
+model ExternalServiceLog {
+  id                    String                   @id @default(uuid())
+  externalServiceId     String
+  externalService       ExternalService          @relation(fields: [externalServiceId], references: [id], onDelete: Cascade)
+  techId                String?
+  tech                  User?                    @relation(fields: [techId], references: [id])
+  type                  String
+  description           String
+  createdAt             DateTime                 @default(now())
+}
+
+model InternalMaintenance {
+  id                    String                   @id @default(uuid())
+  deviceTypeId          String
+  deviceType            DeviceType               @relation(fields: [deviceTypeId], references: [id])
+  patrimony             String?
+  brand                 String?
+  originSectorId        String
+  originSector          Sector                   @relation(fields: [originSectorId], references: [id])
+  equipmentUser         String
+  userEmail             String?                   
+  reportedProblem       String
+  status                Status                   @default(PENDENTE)
+  receiveDate           DateTime                 @default(now()) 
+  updatedAt             DateTime                 @updatedAt
+
+  techs                 User[]                   @relation("TechsOnInternal") 
+  logs                  InternalMaintenanceLog[]
+}
+
+model InternalMaintenanceLog {
+  id                    String                   @id @default(uuid())
+  internalMaintenanceId String
+  internalMaintenance   InternalMaintenance      @relation(fields: [internalMaintenanceId], references: [id], onDelete: Cascade)
+  techId                String?
+  tech                  User?                    @relation(fields: [techId], references: [id])
+  action                String
+  type                  String?                  @default("MANUAL") 
+  createdAt             DateTime                 @default(now())
+}
+
+// ----------------------------------------------------
+// NOVAS TABELAS DE INFRAESTRUTURA (IPs e Acesso Remoto)
+// ----------------------------------------------------
+
+model IpRange {
+  id        String      @id @default(uuid())
+  range     String      // <-- MUDEI DE 'name' PARA 'range'
+  sectorId  String
+  sector    Sector      @relation(fields: [sectorId], references: [id], onDelete: Cascade)
+  ips       IpAddress[]
+
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @default(now()) @updatedAt
+}
+
+model IpAddress {
+  id        String   @id @default(uuid())
+  ip        String   // Ex: "192.168.0.50"
+  device    String?  // Nome ou descrição do dispositivo
+  rangeId   String
+  range     IpRange  @relation(fields: [rangeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model RemoteAccess {
+  id        String   @id @default(uuid())
+  code      String   // Código do AnyDesk
+  sectorId  String   // <-- CORRIGIDO PARA PUXAR O SETOR DO BANCO
+  sector    Sector   @relation(fields: [sectorId], references: [id], onDelete: Cascade)
+  patrimony String   // Patrimônio ou número de série
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
