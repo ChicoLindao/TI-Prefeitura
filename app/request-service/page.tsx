@@ -14,6 +14,8 @@ export default function NovoChamado() {
   
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  // NOVO: Estado para guardar e mostrar mensagens de erro bonitas
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     fetch("/api/public/ticket")
@@ -26,18 +28,24 @@ export default function NovoChamado() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMessage(""); // Limpa o erro anterior antes de tentar de novo
     
-    const res = await fetch("/api/public/ticket", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      // Enviamos fixo que é uma demanda externa (visita técnica)
-      body: JSON.stringify({ type: "EXTERNAL", sectorId, personAttended, userEmail, description })
-    });
-    
-    if (res.ok) {
-      setSuccess(true);
-    } else {
-      alert("Erro ao enviar solicitação.");
+    try {
+      const res = await fetch("/api/public/ticket", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "EXTERNAL", sectorId, personAttended, userEmail, description })
+      });
+      
+      if (res.ok) {
+        setSuccess(true);
+      } else {
+        // Captura o erro exato que mandamos lá da API
+        const data = await res.json();
+        setErrorMessage(data.error || "Ocorreu um erro ao enviar a solicitação. Tente novamente.");
+      }
+    } catch (err) {
+      setErrorMessage("Erro de conexão com o servidor.");
     }
     
     setLoading(false);
@@ -46,8 +54,6 @@ export default function NovoChamado() {
   if (success) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 flex flex-col items-center justify-center p-4">
-        
-        {/* LOGO - TELA DE SUCESSO */}
         <div className="flex justify-center w-full mb-8">
           <Image
             src="/logo.png"
@@ -75,8 +81,6 @@ export default function NovoChamado() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 py-12 px-4">
-      
-      {/* LOGO - TELA DO FORMULÁRIO */}
       <div className="flex justify-center w-full mb-8">
         <Link href="/" className="hover:opacity-90 transition-opacity duration-300">
           <Image
@@ -107,6 +111,14 @@ export default function NovoChamado() {
             <span className="text-base leading-relaxed">ℹ️</span>
             <span>Preencha os dados abaixo para solicitar um atendimento no seu setor.</span>
           </div>
+
+          {/* NOVO: BANNER DE ERRO ELEGANTE */}
+          {errorMessage && (
+            <div className="bg-red-50 text-red-700 p-4 rounded-xl text-sm border border-red-200 flex items-start gap-3 animate-pulse">
+              <span className="text-base leading-relaxed">⚠️</span>
+              <span className="font-medium">{errorMessage}</span>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
