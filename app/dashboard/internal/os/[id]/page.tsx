@@ -3,14 +3,19 @@ import { redirect } from "next/navigation";
 import PrintButton from "./PrintButton";
 
 export default async function OrderOfServicePrint({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+  const resolvedParams = await params;
+  const id = resolvedParams.id;
 
   const maintenance = await prisma.internalMaintenance.findUnique({
     where: { id },
     include: {
-      receivedBy: { select: { name: true } },
-      tech: { select: { name: true } },
-      logs: { include: { tech: { select: { name: true } } }, orderBy: { createdAt: "asc" } },
+      originSector: true,
+      deviceType: true,
+      techs: { select: { name: true } },
+      logs: { 
+        include: { tech: { select: { name: true } } }, 
+        orderBy: { createdAt: "asc" } 
+      },
     }
   });
 
@@ -35,12 +40,12 @@ export default async function OrderOfServicePrint({ params }: { params: Promise<
       {/* DADOS DO EQUIPAMENTO E SOLICITANTE */}
       <div className="mb-8 grid grid-cols-2 gap-6 border border-slate-300 p-5 rounded-lg bg-slate-50 print:bg-transparent">
         <div className="space-y-1.5">
-          <p className="text-sm"><strong className="text-slate-700">Setor:</strong> <span className="text-slate-600">{maintenance.originSector}</span></p>
+          <p className="text-sm"><strong className="text-slate-700">Setor:</strong> <span className="text-slate-600">{maintenance.originSector.name}</span></p>
           <p className="text-sm"><strong className="text-slate-700">Usuário:</strong> <span className="text-slate-600">{maintenance.equipmentUser}</span></p>
-          <p className="text-sm"><strong className="text-slate-700">Telefone:</strong> <span className="text-slate-600">{maintenance.userPhone || 'Não informado'}</span></p>
+          <p className="text-sm"><strong className="text-slate-700">E-mail:</strong> <span className="text-slate-600">{maintenance.userEmail || 'Não informado'}</span></p>
         </div>
         <div className="space-y-1.5">
-          <p className="text-sm"><strong className="text-slate-700">Dispositivo:</strong> <span className="text-slate-600">{maintenance.deviceType} {maintenance.brand ? `(${maintenance.brand})` : ''}</span></p>
+          <p className="text-sm"><strong className="text-slate-700">Dispositivo:</strong> <span className="text-slate-600">{maintenance.deviceType.name} {maintenance.brand ? `(${maintenance.brand})` : ''}</span></p>
           <p className="text-sm"><strong className="text-slate-700">Patrimônio:</strong> <span className="text-slate-600">{maintenance.patrimony || 'N/A'}</span></p>
           <p className="text-sm"><strong className="text-slate-700">Solicitação:</strong> <span className="text-slate-600">{new Date(maintenance.receiveDate).toLocaleDateString('pt-BR')}</span></p>
         </div>
@@ -59,7 +64,7 @@ export default async function OrderOfServicePrint({ params }: { params: Promise<
             <ol className="list-decimal pl-6 space-y-2">
               {maintenance.logs.map((log: any) => (
                 <li key={log.id} className="text-sm text-slate-700 leading-relaxed">
-                  {log.action} <span className="text-xs text-slate-400">({log.tech.name} - {new Date(log.createdAt).toLocaleDateString('pt-BR')})</span>
+                  {log.action} <span className="text-xs text-slate-400">({log.tech?.name || 'Sistema'} - {new Date(log.createdAt).toLocaleDateString('pt-BR')})</span>
                 </li>
               ))}
             </ol>

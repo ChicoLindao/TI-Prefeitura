@@ -1,6 +1,7 @@
-export { default } from "next-auth/middleware";
+import { withAuth } from "next-auth/middleware";
 
-// Aqui nós definimos quais rotas o "cão de guarda" vai proteger
+export default withAuth;
+
 export const config = {
   matcher: [
     /* PROTEÇÃO DAS TELAS VISUAIS */

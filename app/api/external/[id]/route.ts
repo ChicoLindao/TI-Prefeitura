@@ -51,12 +51,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     await prisma.externalServiceLog.create({ data: dataToSave });
 
     // Envia e-mail para o usuário (solicitante)
-    if (updatedService.contactEmail) {
+    if (updatedService.userEmail) {
       try {
         const transporter = nodemailer.createTransport({ service: "gmail", auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS } });
         transporter.sendMail({
           from: process.env.EMAIL_USER,
-          to: updatedService.contactEmail,
+          to: updatedService.userEmail,
           subject: `Atualização no Chamado: ${updatedService.sector.name}`,
           html: `<h3>Seu chamado de TI foi atualizado!</h3>
                  <p>O novo status do seu atendimento é: <strong>${body.status.replace(/_/g, ' ')}</strong></p>

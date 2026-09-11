@@ -52,12 +52,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     await prisma.internalMaintenanceLog.create({ data: dataToSave });
 
     // Envia e-mail para o usuário (solicitante)
-    if (updatedMaint.contactEmail) {
+    if (updatedMaint.userEmail) {
       try {
         const transporter = nodemailer.createTransport({ service: "gmail", auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS } });
         transporter.sendMail({
           from: process.env.EMAIL_USER,
-          to: updatedMaint.contactEmail,
+          to: updatedMaint.userEmail,
           subject: `Atualização na Bancada: ${updatedMaint.deviceType.name}`,
           html: `<h3>O status do seu equipamento mudou!</h3>
                  <p>O equipamento que está na bancada agora consta como: <strong>${body.status.replace(/_/g, ' ')}</strong></p>

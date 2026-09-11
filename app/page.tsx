@@ -157,7 +157,7 @@ export default async function PublicDashboard() {
                     {service.logs && service.logs.length > 0 && (
                       <p className="text-xs text-blue-500 font-medium italic mt-3 px-1 flex items-center gap-1.5">
                         <span className="w-1 h-1 rounded-full bg-blue-400" />
-                        {service.logs[0].description || service.logs[0].action} ({timeAgo(service.logs[0].createdAt)})
+                        {service.logs[0].description} ({timeAgo(service.logs[0].createdAt)})
                       </p>
                     )}
                   </div>
