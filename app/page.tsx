@@ -70,22 +70,43 @@ export default async function PublicDashboard() {
           Acompanhamento dos Atendimentos do Departamento de TI 
         </p>
 
-        <div className="mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4 bg-white/80 backdrop-blur-sm p-4 rounded-xl border border-slate-200 shadow-sm w-full sm:w-auto">
+        {/* BOTÕES DE CONTATO E ANYDESK */}
+        <div className="mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4 bg-white/80 backdrop-blur-sm p-4 rounded-xl border border-slate-200 shadow-sm w-full sm:w-auto items-stretch sm:items-center">
           <a
             href="mailto:ti@charqueadas.rs.gov.br?subject=Olá,%20preciso%20de%20suporte%20técnico!" 
-            className="flex items-center gap-2.5 text-slate-600 hover:text-blue-600 font-medium text-sm transition-colors duration-200 px-4 py-2 rounded-lg hover:bg-blue-50"
+            className="flex items-center justify-center gap-2.5 text-slate-600 hover:text-blue-600 font-medium text-sm transition-colors duration-200 px-4 py-2 rounded-lg hover:bg-blue-50"
           >
             <span className="text-lg">✉️</span> ti@charqueadas.rs.gov.br
           </a>
-          <span className="hidden sm:block w-px bg-slate-200" />
+
+          <span className="hidden sm:block w-px bg-slate-200 self-stretch my-1" />
+
+          <a
+            href="https://download.anydesk.com/AnyDesk.exe"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-medium text-sm transition-all duration-200 px-4 py-2 rounded-lg shadow-sm hover:shadow"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect width="20" height="14" x="2" y="3" rx="2"/>
+              <line x1="8" x2="16" y1="21" y2="21"/>
+              <line x1="12" x2="12" y1="17" y2="21"/>
+            </svg>
+            Suporte AnyDesk
+          </a>
+          
+          <span className="hidden sm:block w-px bg-slate-200 self-stretch my-1" />
+          
           <a
             href="https://wa.me/5551935052374?text=Olá,%20preciso%20de%20suporte%20técnico!" 
             target="_blank" 
             rel="noopener noreferrer" 
-            className="flex items-center gap-2.5 text-slate-600 hover:text-green-600 font-medium text-sm transition-colors duration-200 px-4 py-2 rounded-lg hover:bg-green-50"
+            className="flex items-center justify-center gap-2.5 text-slate-600 hover:text-green-600 font-medium text-sm transition-colors duration-200 px-4 py-2 rounded-lg hover:bg-green-50"
           >
             <span className="text-lg">📞</span> (51) 93505-2374
           </a>
+
+          <span className="hidden sm:block w-px bg-slate-200 self-stretch my-1" />
         </div>
       </div>
 

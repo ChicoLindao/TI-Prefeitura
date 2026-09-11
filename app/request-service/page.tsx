@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
+import Link from "next/link";
 
 export default function NovoChamado() {
   const [sectors, setSectors] = useState([]);
@@ -43,14 +45,29 @@ export default function NovoChamado() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 flex flex-col items-center justify-center p-4">
+        
+        {/* LOGO - TELA DE SUCESSO */}
+        <div className="flex justify-center w-full mb-8">
+          <Image
+            src="/logo.png"
+            alt="Logo da Prefeitura"
+            width={140}
+            height={140}
+            className="object-contain"
+            priority
+          />
+        </div>
+
         <div className="bg-white p-10 rounded-2xl shadow-lg max-w-md w-full text-center border border-slate-200">
           <div className="w-16 h-16 mx-auto mb-5 bg-green-50 rounded-full flex items-center justify-center border border-green-200">
             <span className="text-3xl">✅</span>
           </div>
           <h2 className="text-2xl font-bold text-slate-800 mb-2">Atendimento Solicitado!</h2>
           <p className="text-slate-500 mb-8 leading-relaxed">Sua solicitação foi salva com sucesso. Nossa equipe entrará em contato ou irá até o setor em breve.</p>
-          <a href="/" className="bg-blue-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-all duration-200 inline-block shadow-sm hover:shadow-md text-sm">Voltar ao Início</a>
+          <Link href="/" className="bg-blue-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-all duration-200 inline-block shadow-sm hover:shadow-md text-sm">
+            Voltar ao Início
+          </Link>
         </div>
       </div>
     );
@@ -58,15 +75,30 @@ export default function NovoChamado() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 py-12 px-4">
+      
+      {/* LOGO - TELA DO FORMULÁRIO */}
+      <div className="flex justify-center w-full mb-8">
+        <Link href="/" className="hover:opacity-90 transition-opacity duration-300">
+          <Image
+            src="/logo.png"
+            alt="Logo da Prefeitura"
+            width={140}
+            height={140}
+            className="object-contain"
+            priority
+          />
+        </Link>
+      </div>
+
       <div className="max-w-2xl mx-auto bg-white p-8 sm:p-10 rounded-2xl shadow-lg border border-slate-200">
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-2xl font-bold text-slate-800">Solicitar Atendimento</h1>
             <p className="text-sm text-slate-400 mt-1">Preencha o formulário abaixo</p>
           </div>
-          <a href="/" className="text-slate-400 hover:text-slate-600 font-medium text-sm transition-colors duration-200 flex items-center gap-1">
+          <Link href="/" className="text-slate-400 hover:text-slate-600 font-medium text-sm transition-colors duration-200 flex items-center gap-1">
             <span>←</span> Cancelar
-          </a>
+          </Link>
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-6">
