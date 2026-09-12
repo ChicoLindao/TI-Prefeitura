@@ -16,7 +16,6 @@ export default function GlobalSettings() {
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [newItemName, setNewItemName] = useState("");
 
-  // --- NOVOS ESTADOS: NOTIFICAÇÕES E MODAL GENÉRICO ---
   const [toast, setToast] = useState({ show: false, message: "", type: "success" });
   const [modal, setModal] = useState({ show: false, title: "", message: "", onConfirm: () => {} });
 
@@ -146,68 +145,142 @@ export default function GlobalSettings() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors p-8 relative">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 transition-colors px-4 py-6 sm:p-8 relative">
       
-      {/* TOAST FLUTUANTE */}
+      {/* TOAST */}
       {toast.show && (
-        <div className={`fixed top-5 right-5 px-6 py-3 rounded-lg shadow-lg font-bold text-white transition-opacity z-50 animate-bounce ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
-          {toast.type === 'success' ? '✅ ' : '❌ '}{toast.message}
+        <div className={`fixed top-8 right-8 z-50 px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3 font-semibold transition-all duration-300 ${
+          toast.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'
+        }`}>
+          <span className="text-xl">{toast.type === 'success' ? '✅' : '❌'}</span>
+          {toast.message}
         </div>
       )}
 
-      {/* MODAL DE CONFIRMAÇÃO GENÉRICO */}
+      {/* MODAL */}
       {modal.show && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-2xl max-w-sm w-full text-center">
-            <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">{modal.title}</h2>
-            <p className="text-gray-600 dark:text-gray-300 mb-8">{modal.message}</p>
-            <div className="flex justify-center gap-4">
-              <button onClick={() => setModal({ ...modal, show: false })} className="px-6 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded font-bold text-gray-800 dark:text-white transition">Cancelar</button>
-              <button onClick={() => { modal.onConfirm(); setModal({ ...modal, show: false }); }} className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded font-bold transition">Confirmar</button>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center">
+            <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-2xl">⚠️</span>
+            </div>
+            <h2 className="text-xl font-bold text-slate-800 mb-2">{modal.title}</h2>
+            <p className="text-slate-500 mb-8 text-sm">{modal.message}</p>
+            <div className="flex justify-center gap-3">
+              <button onClick={() => setModal({ ...modal, show: false })} className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition-all text-sm">
+                Cancelar
+              </button>
+              <button onClick={() => { modal.onConfirm(); setModal({ ...modal, show: false }); }} className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold transition-all text-sm shadow-sm hover:shadow-md">
+                Confirmar
+              </button>
             </div>
           </div>
         </div>
       )}
 
       <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Configurações Gerais</h1>
-          <a href="/dashboard" className="text-blue-600 dark:text-blue-400 hover:underline font-medium text-lg">← Voltar ao Painel</a>
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-blue-600 font-bold mb-1">Administração</p>
+            <h1 className="text-3xl font-bold text-slate-800">Configurações Gerais</h1>
+          </div>
+          <a href="/dashboard" className="text-slate-500 hover:text-slate-700 hover:underline font-medium text-sm transition-colors">
+            ← Voltar ao Painel
+          </a>
         </div>
 
-        <div className="flex gap-4 mb-8 border-b-2 border-gray-200 dark:border-gray-700 pb-2">
-          <button onClick={() => {setActiveTab("EQUIPE"); resetUserForm();}} className={`font-bold pb-2 px-2 text-lg transition-colors ${activeTab === 'EQUIPE' ? 'border-b-4 border-gray-900 dark:border-white text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>👤 Gerenciar Equipe</button>
-          <button onClick={() => {setActiveTab("SECTORS"); setEditingItemId(null); setNewItemName("");}} className={`font-bold pb-2 px-2 text-lg transition-colors ${activeTab === 'SECTORS' ? 'border-b-4 border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>🏢 Setores</button>
-          <button onClick={() => {setActiveTab("DEVICES"); setEditingItemId(null); setNewItemName("");}} className={`font-bold pb-2 px-2 text-lg transition-colors ${activeTab === 'DEVICES' ? 'border-b-4 border-purple-600 dark:border-purple-500 text-purple-600 dark:text-purple-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>💻 Tipos de Equipamentos</button>
+        {/* Tabs */}
+        <div className="flex flex-wrap gap-1 border-b border-slate-200 mb-6">
+          <button
+            onClick={() => {setActiveTab("EQUIPE"); resetUserForm();}}
+            className={`px-5 py-3 font-semibold text-sm border-b-2 transition-all duration-200 ${
+              activeTab === 'EQUIPE'
+                ? 'border-slate-800 text-slate-800 bg-slate-50/50'
+                : 'border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            👤 Gerenciar Equipe
+          </button>
+          <button
+            onClick={() => {setActiveTab("SECTORS"); setEditingItemId(null); setNewItemName("");}}
+            className={`px-5 py-3 font-semibold text-sm border-b-2 transition-all duration-200 ${
+              activeTab === 'SECTORS'
+                ? 'border-blue-600 text-blue-600 bg-blue-50/50'
+                : 'border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            🏢 Setores
+          </button>
+          <button
+            onClick={() => {setActiveTab("DEVICES"); setEditingItemId(null); setNewItemName("");}}
+            className={`px-5 py-3 font-semibold text-sm border-b-2 transition-all duration-200 ${
+              activeTab === 'DEVICES'
+                ? 'border-blue-600 text-blue-600 bg-blue-50/50'
+                : 'border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            💻 Tipos de Equipamentos
+          </button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          <div className="lg:col-span-1 bg-white dark:bg-gray-800 p-6 rounded-lg shadow h-fit border-t-4 border-gray-900 dark:border-gray-500">
-            <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">
+          {/* Formulário */}
+          <div className="lg:col-span-1 bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-slate-800 h-fit">
+            <h2 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-100 pb-3">
               {activeTab === 'EQUIPE' ? (editingId ? 'Editar Técnico' : 'Novo Técnico') : (editingItemId ? 'Editar Cadastro' : (activeTab === 'SECTORS' ? 'Novo Setor' : 'Novo Equipamento'))}
             </h2>
             
             {activeTab === 'EQUIPE' ? (
               <form onSubmit={handleAddOrEditUser} className="space-y-4">
-                <input required type="text" placeholder="Nome" value={name} onChange={e => setName(e.target.value)} className="w-full border dark:border-gray-600 p-3 rounded text-gray-900 dark:text-white font-medium bg-gray-50 dark:bg-gray-700 placeholder-gray-400" />
-                <input required type="email" placeholder="E-mail" value={email} onChange={e => setEmail(e.target.value)} className="w-full border dark:border-gray-600 p-3 rounded text-gray-900 dark:text-white font-medium bg-gray-50 dark:bg-gray-700 placeholder-gray-400" />
-                <select value={role} onChange={e => setRole(e.target.value)} className="w-full border dark:border-gray-600 p-3 rounded text-gray-900 dark:text-white font-medium bg-gray-50 dark:bg-gray-700">
+                <input
+                  required
+                  type="text"
+                  placeholder="Nome"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-none transition-all"
+                />
+                <input
+                  required
+                  type="email"
+                  placeholder="E-mail"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-none transition-all"
+                />
+                <select
+                  value={role}
+                  onChange={e => setRole(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-none transition-all"
+                >
                   <option value="FUNCIONARIO">Técnico Padrão</option>
                   <option value="ADMINISTRADOR">Administrador</option>
                 </select>
                 
                 <div className="flex gap-2 flex-col pt-2">
-                  <button type="submit" className="w-full bg-gray-800 dark:bg-gray-600 text-white px-4 py-3 rounded font-bold hover:bg-gray-900 dark:hover:bg-gray-500 transition">
+                  <button
+                    type="submit"
+                    className="w-full bg-slate-800 text-white px-4 py-3 rounded-xl font-semibold hover:bg-slate-700 transition-all duration-200 shadow-sm hover:shadow-md text-sm"
+                  >
                     {editingId ? 'Salvar Alterações' : 'Cadastrar Técnico'}
                   </button>
                   
                   {editingId && (
                     <>
-                      <button type="button" onClick={handleResetPassword} className="w-full bg-yellow-500 dark:bg-yellow-600 text-yellow-900 dark:text-yellow-100 px-4 py-2 rounded font-bold hover:bg-yellow-600 dark:hover:bg-yellow-500 transition">
+                      <button
+                        type="button"
+                        onClick={handleResetPassword}
+                        className="w-full bg-amber-50 text-amber-700 border border-amber-200 px-4 py-2.5 rounded-xl font-semibold hover:bg-amber-100 transition-all text-sm"
+                      >
                         Resetar Senha
                       </button>
-                      <button type="button" onClick={resetUserForm} className="w-full text-gray-600 dark:text-gray-400 font-bold hover:underline mt-2">
+                      <button
+                        type="button"
+                        onClick={resetUserForm}
+                        className="w-full text-slate-500 font-semibold hover:text-slate-700 hover:underline transition-colors text-sm mt-1"
+                      >
                         Cancelar Edição
                       </button>
                     </>
@@ -216,13 +289,27 @@ export default function GlobalSettings() {
               </form>
             ) : (
               <form onSubmit={(e) => handleAddOrEditItem(e, activeTab === 'SECTORS' ? 'SECTOR' : 'DEVICE')} className="space-y-4">
-                <input required type="text" placeholder="Digite o nome..." value={newItemName} onChange={e => setNewItemName(e.target.value)} className="w-full border dark:border-gray-600 p-3 rounded text-gray-900 dark:text-white font-medium bg-gray-50 dark:bg-gray-700 placeholder-gray-400" />
+                <input
+                  required
+                  type="text"
+                  placeholder="Digite o nome..."
+                  value={newItemName}
+                  onChange={e => setNewItemName(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-none transition-all"
+                />
                 <div className="flex flex-col gap-2">
-                  <button type="submit" className="w-full bg-blue-600 text-white px-4 py-3 rounded font-bold hover:bg-blue-700 transition">
+                  <button
+                    type="submit"
+                    className="w-full bg-blue-600 text-white px-4 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-all duration-200 shadow-sm hover:shadow-md text-sm"
+                  >
                     {editingItemId ? 'Salvar Alterações' : 'Salvar Cadastro'}
                   </button>
                   {editingItemId && (
-                    <button type="button" onClick={() => {setEditingItemId(null); setNewItemName("");}} className="w-full text-gray-600 dark:text-gray-400 font-bold hover:underline mt-2">
+                    <button
+                      type="button"
+                      onClick={() => {setEditingItemId(null); setNewItemName("");}}
+                      className="w-full text-slate-500 font-semibold hover:text-slate-700 hover:underline transition-colors text-sm mt-1"
+                    >
                       Cancelar Edição
                     </button>
                   )}
@@ -231,45 +318,76 @@ export default function GlobalSettings() {
             )}
           </div>
 
-          <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-            <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Cadastros Ativos</h2>
+          {/* Tabela */}
+          <div className="lg:col-span-2 bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200">
+            <h2 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-100 pb-3">Cadastros Ativos</h2>
             
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-gray-100 dark:bg-gray-700 border-b dark:border-gray-600 text-gray-800 dark:text-gray-200">
-                  <th className="p-3 font-bold">Nome</th>
-                  {activeTab === 'EQUIPE' && <th className="p-3 font-bold">Acesso</th>}
-                  <th className="p-3 font-bold text-center w-32">Ações</th>
+                <tr className="bg-slate-50 border-b border-slate-200 text-slate-600">
+                  <th className="p-4 font-bold text-sm">Nome</th>
+                  {activeTab === 'EQUIPE' && <th className="p-4 font-bold text-sm">Acesso</th>}
+                  <th className="p-4 font-bold text-center text-sm w-32">Ações</th>
                 </tr>
               </thead>
               <tbody>
-                {activeTab === 'EQUIPE' && users.map(u => (
-                  <tr key={u.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="p-3 text-gray-900 dark:text-white"><strong>{u.name}</strong><br/><span className="text-sm text-gray-600 dark:text-gray-400">{u.email}</span></td>
-                    <td className="p-3"><span className="px-2 py-1 rounded text-xs font-bold bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300">{u.role === 'ADMINISTRADOR' ? 'Admin' : 'Padrão'}</span></td>
-                    <td className="p-3 text-center space-x-3">
-                      <button onClick={() => handleEditUser(u)} className="text-blue-600 dark:text-blue-400 font-bold hover:underline">Editar</button>
-                      <button onClick={() => handleDeleteUser(u.id)} className="text-red-600 dark:text-red-400 font-bold hover:underline">Excluir</button>
+                {activeTab === 'EQUIPE' && users.map((u: any) => (
+                  <tr key={u.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td className="p-4 text-slate-800">
+                      <strong className="font-semibold">{u.name}</strong>
+                      <br />
+                      <span className="text-sm text-slate-400">{u.email}</span>
+                    </td>
+                    <td className="p-4">
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                        u.role === 'ADMINISTRADOR'
+                          ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                          : 'bg-slate-100 text-slate-600 border border-slate-200'
+                      }`}>
+                        {u.role === 'ADMINISTRADOR' ? 'Admin' : 'Padrão'}
+                      </span>
+                    </td>
+                    <td className="p-4 text-center">
+                      <div className="flex justify-center gap-3">
+                        <button onClick={() => handleEditUser(u)} className="text-blue-600 font-semibold text-sm hover:text-blue-800 transition-colors hover:underline">
+                          Editar
+                        </button>
+                        <button onClick={() => handleDeleteUser(u.id)} className="text-red-500 font-semibold text-sm hover:text-red-700 transition-colors hover:underline">
+                          Excluir
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
                 
-                {activeTab === 'SECTORS' && sectors.map(s => (
-                  <tr key={s.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="p-3 text-gray-900 dark:text-white font-medium">{s.name}</td>
-                    <td className="p-3 text-center space-x-3">
-                      <button onClick={() => handleEditItem(s)} className="text-blue-600 dark:text-blue-400 font-bold hover:underline">Editar</button>
-                      <button onClick={() => handleDeleteItem(s.id, 'SECTOR')} className="text-red-600 dark:text-red-400 font-bold hover:underline">Excluir</button>
+                {activeTab === 'SECTORS' && sectors.map((s: any) => (
+                  <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td className="p-4 text-slate-800 font-medium">{s.name}</td>
+                    <td className="p-4 text-center">
+                      <div className="flex justify-center gap-3">
+                        <button onClick={() => handleEditItem(s)} className="text-blue-600 font-semibold text-sm hover:text-blue-800 transition-colors hover:underline">
+                          Editar
+                        </button>
+                        <button onClick={() => handleDeleteItem(s.id, 'SECTOR')} className="text-red-500 font-semibold text-sm hover:text-red-700 transition-colors hover:underline">
+                          Excluir
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
 
-                {activeTab === 'DEVICES' && devices.map(d => (
-                  <tr key={d.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="p-3 text-gray-900 dark:text-white font-medium">{d.name}</td>
-                    <td className="p-3 text-center space-x-3">
-                      <button onClick={() => handleEditItem(d)} className="text-blue-600 dark:text-blue-400 font-bold hover:underline">Editar</button>
-                      <button onClick={() => handleDeleteItem(d.id, 'DEVICE')} className="text-red-600 dark:text-red-400 font-bold hover:underline">Excluir</button>
+                {activeTab === 'DEVICES' && devices.map((d: any) => (
+                  <tr key={d.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td className="p-4 text-slate-800 font-medium">{d.name}</td>
+                    <td className="p-4 text-center">
+                      <div className="flex justify-center gap-3">
+                        <button onClick={() => handleEditItem(d)} className="text-blue-600 font-semibold text-sm hover:text-blue-800 transition-colors hover:underline">
+                          Editar
+                        </button>
+                        <button onClick={() => handleDeleteItem(d.id, 'DEVICE')} className="text-red-500 font-semibold text-sm hover:text-red-700 transition-colors hover:underline">
+                          Excluir
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

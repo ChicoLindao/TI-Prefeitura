@@ -2,13 +2,10 @@ import prisma from "@/lib/prisma";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-// No Next.js 16+, o tipo do params é uma Promise
 export default async function TechHistoryPage({ params }: { params: Promise<{ id: string }> }) {
-  // Aguarda a resolução dos parâmetros da URL antes de usar
   const resolvedParams = await params;
   const id = resolvedParams.id;
 
-  // Puxa o técnico e TODOS os chamados atrelados a ele, sem filtro de exclusão
   const tech = await prisma.user.findUnique({
     where: { id },
     include: {
@@ -28,87 +25,150 @@ export default async function TechHistoryPage({ params }: { params: Promise<{ id
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0f172a] text-gray-900 dark:text-gray-100 p-8 transition-colors">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 transition-colors px-4 py-6 sm:p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-start mb-8 border-b border-gray-300 dark:border-gray-800 pb-4">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Histórico de Chamados</h1>
-            <p className="text-lg text-gray-600 dark:text-gray-400 mt-1">
-              Técnico: <strong className="text-gray-900 dark:text-white">{tech.name}</strong> ({tech.email})
+            <p className="text-xs uppercase tracking-[0.2em] text-blue-600 font-bold mb-1">Histórico</p>
+            <h1 className="text-3xl font-bold text-slate-800">Chamados do Técnico</h1>
+            <p className="text-sm text-slate-500 mt-1">
+              <strong className="text-slate-700">{tech.name}</strong> ({tech.email})
             </p>
           </div>
-          <Link href="/dashboard" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">
+          <a href="/dashboard" className="text-slate-500 hover:text-slate-700 hover:underline font-medium text-sm transition-colors">
             ← Voltar ao Painel
-          </Link>
+          </a>
+        </div>
+
+        {/* Resumo */}
+        <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-blue-600 mb-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-slate-800 mb-1">Resumo de Atividades</h2>
+              <p className="text-slate-500 text-sm">
+                Total de atendimentos: <strong className="text-slate-700">{tech.externalServices.length}</strong> |
+                Total de equipamentos: <strong className="text-slate-700">{tech.internalMaintenances.length}</strong>
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          
-          {/* EXTERNOS (Mostra tudo: pendentes, em andamento e entregues) */}
+          {/* EXTERNOS */}
           <div>
-            <h2 className="text-xl font-bold mb-4 border-b-2 border-blue-600 pb-2">
-              Atendimentos Externos ({tech.externalServices.length})
-            </h2>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-1.5 h-8 bg-blue-500 rounded-full" />
+              <h2 className="text-xl font-bold text-slate-800">
+                Atendimentos Externos
+              </h2>
+              <span className="ml-auto text-xs font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
+                {tech.externalServices.length}
+              </span>
+            </div>
             <div className="space-y-4">
-              {tech.externalServices.map((srv: any) => (
-                <div key={srv.id} className={`bg-white dark:bg-[#1e293b] p-4 rounded-lg shadow-sm border-l-4 ${srv.status === 'ENTREGUE' ? 'border-green-500' : 'border-blue-500'}`}>
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-bold text-gray-900 dark:text-white">{srv.sector.name}</h3>
-                    <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${
-                      srv.status === 'ENTREGUE' ? 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-400' : 
-                      srv.status === 'EM_ANDAMENTO' ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-400' : 
-                      'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
-                    }`}>
-                      {srv.status.replace(/_/g, ' ')}
-                    </span>
-                  </div>
-                  <p className="text-sm bg-gray-50 dark:bg-[#0f172a] p-2 rounded text-gray-700 dark:text-gray-300 mb-3">
-                    Problema: {srv.description}
-                  </p>
-                  <Link href={`/dashboard/external/${srv.id}`} className="text-blue-600 dark:text-blue-400 text-sm font-bold hover:underline">
-                    Ver Chamado →
-                  </Link>
+              {tech.externalServices.length === 0 ? (
+                <div className="bg-white border border-slate-200 rounded-xl p-8 text-center">
+                  <p className="text-slate-400 text-sm">Nenhum atendimento externo registrado.</p>
                 </div>
-              ))}
-              {tech.externalServices.length === 0 && (
-                <p className="text-gray-500 italic bg-white dark:bg-[#1e293b] p-4 rounded-lg shadow-sm">Nenhum atendimento externo registrado.</p>
+              ) : (
+                tech.externalServices.map((srv: any) => (
+                  <div
+                    key={srv.id}
+                    className={`bg-white p-5 rounded-2xl shadow-sm border border-slate-200 border-l-4 flex flex-col gap-3 transition-all duration-200 hover:shadow-md hover:border-slate-300 ${
+                      srv.status === 'ENTREGUE' ? 'border-l-emerald-500' :
+                      srv.status === 'EM_ANDAMENTO' ? 'border-l-amber-400' :
+                      'border-l-red-500'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-bold text-slate-900">{srv.sector.name}</h3>
+                      <span className={`text-[10px] uppercase font-bold px-2.5 py-1 rounded-full ${
+                        srv.status === 'ENTREGUE'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : srv.status === 'EM_ANDAMENTO'
+                          ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                          : 'bg-red-50 text-red-700 border border-red-200'
+                      }`}>
+                        {srv.status.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-xl text-sm text-slate-600 border border-slate-100">
+                      <strong>Problema:</strong> {srv.description}
+                    </div>
+                    <div className="flex justify-end border-t border-slate-100 pt-3">
+                      <Link
+                        href={`/dashboard/external/${srv.id}`}
+                        className="text-blue-600 text-sm font-bold hover:text-blue-800 transition-colors"
+                      >
+                        Ver Chamado →
+                      </Link>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           </div>
 
-          {/* INTERNOS (Mostra tudo: pendentes, andamento, aguardando, entregues) */}
+          {/* INTERNOS */}
           <div>
-            <h2 className="text-xl font-bold mb-4 border-b-2 border-gray-400 pb-2">
-              Bancada Interna ({tech.internalMaintenances.length})
-            </h2>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-1.5 h-8 bg-slate-700 rounded-full" />
+              <h2 className="text-xl font-bold text-slate-800">
+                Equipamentos no Setor
+              </h2>
+              <span className="ml-auto text-xs font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
+                {tech.internalMaintenances.length}
+              </span>
+            </div>
             <div className="space-y-4">
-              {tech.internalMaintenances.map((maint: any) => (
-                <div key={maint.id} className={`bg-white dark:bg-[#1e293b] p-4 rounded-lg shadow-sm border-l-4 ${maint.status === 'ENTREGUE' || maint.status === 'AGUARDANDO_RETIRADA' ? 'border-green-500' : 'border-gray-500'}`}>
-                  <div className="flex justify-between items-start mb-1">
-                    <h3 className="font-bold text-gray-900 dark:text-white">{maint.deviceType.name}</h3>
-                    <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${
-                      maint.status === 'ENTREGUE' || maint.status === 'AGUARDANDO_RETIRADA' ? 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-400' : 
-                      maint.status === 'EM_ANDAMENTO' ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-400' : 
-                      'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
-                    }`}>
-                      {maint.status.replace(/_/g, ' ')}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">De: {maint.originSector.name}</p>
-                  <p className="text-sm bg-gray-50 dark:bg-[#0f172a] p-2 rounded text-gray-700 dark:text-gray-300 mb-3">
-                    Defeito: {maint.reportedProblem}
-                  </p>
-                  <Link href={`/dashboard/internal/${maint.id}`} className="text-blue-600 dark:text-blue-400 text-sm font-bold hover:underline">
-                    Ver Equipamento →
-                  </Link>
+              {tech.internalMaintenances.length === 0 ? (
+                <div className="bg-white border border-slate-200 rounded-xl p-8 text-center">
+                  <p className="text-slate-400 text-sm">Nenhum equipamento na bancada registrado.</p>
                 </div>
-              ))}
-              {tech.internalMaintenances.length === 0 && (
-                <p className="text-gray-500 italic bg-white dark:bg-[#1e293b] p-4 rounded-lg shadow-sm">Nenhum equipamento na bancada registrado.</p>
+              ) : (
+                tech.internalMaintenances.map((maint: any) => (
+                  <div
+                    key={maint.id}
+                    className={`bg-white p-5 rounded-2xl shadow-sm border border-slate-200 border-l-4 flex flex-col gap-3 transition-all duration-200 hover:shadow-md hover:border-slate-300 ${
+                      maint.status === 'ENTREGUE' || maint.status === 'PRONTO_PARA_RETIRADA'
+                        ? 'border-l-emerald-500'
+                        : maint.status === 'EM_ANDAMENTO'
+                        ? 'border-l-amber-400'
+                        : 'border-l-red-500'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-bold text-slate-900">{maint.deviceType.name}</h3>
+                      <span className={`text-[10px] uppercase font-bold px-2.5 py-1 rounded-full ${
+                        maint.status === 'ENTREGUE' || maint.status === 'PRONTO_PARA_RETIRADA'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : maint.status === 'EM_ANDAMENTO'
+                          ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                          : 'bg-red-50 text-red-700 border border-red-200'
+                      }`}>
+                        {maint.status.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-500">
+                      De: <strong className="text-slate-700">{maint.originSector.name}</strong>
+                    </p>
+                    <div className="bg-slate-50 p-3 rounded-xl text-sm text-slate-600 border border-slate-100">
+                      <strong>Defeito:</strong> {maint.reportedProblem}
+                    </div>
+                    <div className="flex justify-end border-t border-slate-100 pt-3">
+                      <Link
+                        href={`/dashboard/internal/${maint.id}`}
+                        className="text-blue-600 text-sm font-bold hover:text-blue-800 transition-colors"
+                      >
+                        Ver Equipamento →
+                      </Link>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           </div>
-
         </div>
       </div>
     </div>

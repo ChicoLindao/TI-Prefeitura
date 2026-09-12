@@ -37,47 +37,86 @@ export default function MyProfile() {
     }
   };
 
-  if (loading) return <div className="p-8 font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 min-h-screen">Carregando dados...</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex flex-col items-center justify-center">
+        <div className="w-12 h-12 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+        <p className="text-slate-500 font-medium animate-pulse">Carregando dados...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 transition-colors px-4 py-6 sm:p-8">
       <div className="max-w-2xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Meu Perfil</h1>
-          <a href="/dashboard" className="text-blue-600 dark:text-blue-400 hover:underline font-medium text-lg">← Voltar ao Painel</a>
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-blue-600 font-bold mb-1">Conta</p>
+            <h1 className="text-3xl font-bold text-slate-800">Meu Perfil</h1>
+          </div>
+          <a href="/dashboard" className="text-slate-500 hover:text-slate-700 hover:underline font-medium text-sm transition-colors">
+            ← Voltar ao Painel
+          </a>
         </div>
 
+        {/* Toast */}
         {message.text && (
-          <div className={`p-4 mb-6 rounded font-bold ${message.type === 'error' ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400' : 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400'}`}>
-            {message.text}
+          <div className={`mb-6 p-4 rounded-xl text-sm font-semibold flex items-start gap-3 transition-all duration-300 ${
+            message.type === 'error'
+              ? 'bg-red-50 text-red-700 border border-red-200'
+              : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+          }`}>
+            <span className="text-base leading-relaxed">{message.type === 'error' ? '⚠️' : '✅'}</span>
+            <span>{message.text}</span>
           </div>
         )}
 
-        <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow border-t-4 border-teal-600">
+        {/* Card principal */}
+        <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 border-t-4 border-t-blue-600">
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Nome (fixo) */}
             <div>
-              <label className="block text-sm font-bold text-gray-800 dark:text-gray-200">Meu Nome (Fixo)</label>
-              <input 
-                type="text" 
-                value={name} 
-                disabled 
-                className="w-full border-2 border-gray-200 dark:border-gray-700 p-3 rounded text-gray-500 dark:text-gray-400 font-medium mt-1 bg-gray-100 dark:bg-gray-900 cursor-not-allowed" 
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Meu Nome (Fixo)</label>
+              <input
+                type="text"
+                value={name}
+                disabled
+                className="w-full border border-slate-200 p-3 rounded-xl text-slate-400 font-medium bg-slate-50 cursor-not-allowed"
               />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">O nome só pode ser alterado pelo Administrador do sistema.</p>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-bold text-gray-800 dark:text-gray-200">E-mail de Acesso</label>
-              <input required type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full border-2 border-gray-200 dark:border-gray-600 p-3 rounded text-gray-900 dark:text-white bg-white dark:bg-gray-700 font-medium mt-1 focus:border-teal-500 focus:outline-none" />
-            </div>
-            
-            <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded border border-gray-200 dark:border-gray-700">
-              <label className="block text-sm font-bold text-gray-800 dark:text-gray-200">Nova Senha</label>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Preencha este campo <strong>apenas</strong> se desejar trocar sua senha atual.</p>
-              <input type="password" placeholder="Deixe em branco para não alterar" value={password} onChange={e => setPassword(e.target.value)} className="w-full border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 p-3 rounded text-gray-900 dark:text-white focus:border-teal-500 focus:outline-none placeholder-gray-400" />
+              <p className="text-xs text-slate-400 mt-1.5">O nome só pode ser alterado pelo Administrador do sistema.</p>
             </div>
 
-            <button type="submit" className="w-full bg-teal-600 text-white px-4 py-4 rounded-lg font-bold text-lg hover:bg-teal-700 transition shadow-md">
+            {/* E-mail */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">E-mail de Acesso</label>
+              <input
+                required
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-none transition-all"
+              />
+            </div>
+
+            {/* Senha */}
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Nova Senha</label>
+              <p className="text-xs text-slate-400 mb-3">Preencha este campo <strong className="text-slate-500">apenas</strong> se desejar trocar sua senha atual.</p>
+              <input
+                type="password"
+                placeholder="Deixe em branco para não alterar"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                className="w-full bg-white border border-slate-200 rounded-xl p-3 text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-none transition-all"
+              />
+            </div>
+
+            {/* Botão */}
+            <button
+              type="submit"
+              className="w-full bg-blue-600 text-white px-4 py-4 rounded-xl font-semibold hover:bg-blue-700 transition-all duration-200 shadow-sm hover:shadow-md text-base"
+            >
               Salvar Alterações
             </button>
           </form>
