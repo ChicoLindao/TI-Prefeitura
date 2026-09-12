@@ -63,3 +63,27 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+// FUNÇÃO PARA EDITAR REGISTROS (PUT)
+export async function PUT(req: Request) {
+  try {
+    const body = await req.json();
+    const { actionType, id, ...data } = body;
+
+    if (actionType === "UPDATE_PRINTER") {
+      await prisma.printer.update({ where: { id }, data: { model: data.model, ipAddress: data.ipAddress, sectorId: data.sectorId } });
+    } else if (actionType === "UPDATE_ROUTER") {
+      await prisma.router.update({ where: { id }, data: { networkName: data.networkName, password: data.password, sectorId: data.sectorId } });
+    } else if (actionType === "UPDATE_IP_RANGE") {
+      await prisma.ipRange.update({ where: { id }, data: { range: data.range, sectorId: data.sectorId } });
+    } else if (actionType === "UPDATE_IP_ADDRESS") {
+      await prisma.ipAddress.update({ where: { id }, data: { ip: data.ip, device: data.device } });
+    } else if (actionType === "UPDATE_REMOTE_ACCESS") {
+      await prisma.remoteAccess.update({ where: { id }, data: { code: data.code, patrimony: data.patrimony, sectorId: data.sectorId } });
+    }
+    
+    return NextResponse.json({ success: true });
+  } catch (error) { 
+    return NextResponse.json({ error: "Erro ao editar registro." }, { status: 500 }); 
+  }
+}

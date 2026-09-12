@@ -13,12 +13,10 @@ function timeAgo(date: Date) {
 export default function GlobalSearchPage() {
   const [query, setQuery] = useState("");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  
   const [resultsExt, setResultsExt] = useState<any[]>([]);
   const [resultsInt, setResultsInt] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Estados para o controle do Calendário
   const today = new Date();
   const [calMonth, setCalMonth] = useState(today.getMonth());
   const [calYear, setCalYear] = useState(today.getFullYear());
@@ -29,7 +27,6 @@ export default function GlobalSearchPage() {
       let url = `/api/search?`;
       if (query) url += `q=${encodeURIComponent(query)}&`;
       if (selectedDate) url += `date=${selectedDate}`;
-      
       const res = await fetch(url);
       const data = await res.json();
       setResultsExt(data.external || []);
@@ -40,13 +37,11 @@ export default function GlobalSearchPage() {
     setIsLoading(false);
   };
 
-  // Dispara a busca toda vez que digitar ou clicar num dia
   useEffect(() => {
     const delay = setTimeout(() => { handleSearch(); }, 500);
     return () => clearTimeout(delay);
   }, [query, selectedDate]);
 
-  // Função para mudar mês do calendário
   const changeMonth = (offset: number) => {
     let newMonth = calMonth + offset;
     let newYear = calYear;
@@ -56,31 +51,28 @@ export default function GlobalSearchPage() {
     setCalYear(newYear);
   };
 
-  // Renderiza os dias do calendário
   const renderCalendarDays = () => {
     const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
     const firstDayIndex = new Date(calYear, calMonth, 1).getDay();
     const days = [];
 
-    // Espaços vazios antes do dia 1
     for (let i = 0; i < firstDayIndex; i++) {
       days.push(<div key={`empty-${i}`} className="p-2"></div>);
     }
 
-    // Dias do mês
     for (let i = 1; i <= daysInMonth; i++) {
       const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
       const isSelected = selectedDate === dateStr;
       const isToday = new Date().toISOString().split('T')[0] === dateStr;
 
       days.push(
-        <button 
-          key={i} 
+        <button
+          key={i}
           onClick={() => setSelectedDate(selectedDate === dateStr ? null : dateStr)}
-          className={`h-10 w-10 mx-auto rounded-full flex items-center justify-center text-sm font-bold transition-all shadow-sm
-            ${isSelected ? 'bg-blue-600 text-white shadow-blue-500/50 scale-110' : 
-              isToday ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' : 
-              'hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
+          className={`h-10 w-10 mx-auto rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-200
+            ${isSelected ? 'bg-blue-600 text-white shadow-md scale-110' :
+              isToday ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+              'hover:bg-slate-100 text-slate-600'}`}
         >
           {i}
         </button>
@@ -91,125 +83,120 @@ export default function GlobalSearchPage() {
 
   const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
-  // Componente reutilizável para renderizar um card de chamado na pesquisa
   const renderCard = (item: any, type: 'EXT' | 'INT') => {
     const isExt = type === 'EXT';
     const isResolved = item.status === 'ENTREGUE' || item.status === 'PRONTO_PARA_RETIRADA';
-    const borderColor = isResolved ? 'border-green-500' : (item.status === 'PENDENTE' ? 'border-red-500' : 'border-yellow-500');
-    const badgeColor = isResolved ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100' : (item.status === 'PENDENTE' ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-100' : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-100');
-    
+    const borderColor = isResolved ? 'border-l-emerald-500' : (item.status === 'PENDENTE' ? 'border-l-red-500' : 'border-l-amber-500');
+    const badgeColor = isResolved ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : (item.status === 'PENDENTE' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-amber-50 text-amber-700 border border-amber-200');
+
     return (
-      <div key={item.id} className={`bg-white dark:bg-gray-800 p-5 rounded-lg shadow-sm border-l-4 flex flex-col justify-between hover:shadow-md transition-shadow ${borderColor}`}>
+      <div key={item.id} className={`bg-white p-5 rounded-2xl shadow-sm border border-slate-200 border-l-4 flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${borderColor}`}>
         <div>
           <div className="flex justify-between items-start mb-2">
-            <h3 className="font-bold text-gray-900 dark:text-white text-lg">{isExt ? item.sector.name : `${item.deviceType.name} (${item.originSector.name})`}</h3>
-            <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${badgeColor}`}>{item.status.replace(/_/g, ' ')}</span>
+            <h3 className="font-bold text-slate-800 text-lg">{isExt ? item.sector.name : `${item.deviceType.name} (${item.originSector.name})`}</h3>
+            <span className={`text-[10px] uppercase font-bold px-2.5 py-1 rounded-full ${badgeColor}`}>{item.status.replace(/_/g, ' ')}</span>
           </div>
-          <p className="text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 p-3 rounded">
+          <p className="text-sm text-slate-600 bg-slate-50 border border-slate-100 p-3 rounded-xl">
             <strong>{isExt ? 'Relato' : 'Defeito'}:</strong> {isExt ? item.description : item.reportedProblem}
           </p>
-          
           {item.logs && item.logs.length > 0 && (
-            <p className="text-xs text-blue-600 dark:text-blue-400 font-medium italic mt-3 px-1 border-l-2 border-blue-400 pl-2">
+            <p className="text-xs text-blue-600 font-medium italic mt-3 pl-3 border-l-2 border-blue-300">
               Último Log: {item.logs[0].description || item.logs[0].action} ({timeAgo(item.logs[0].createdAt)})
             </p>
           )}
         </div>
-        <div className="flex justify-between items-end mt-4 border-t dark:border-gray-700 pt-3">
-          <span className="text-[10px] text-gray-400 dark:text-gray-500">Técnicos: {item.techs?.length > 0 ? item.techs.map((t:any)=>t.name).join(', ') : 'Nenhum'}</span>
-          <a href={`/dashboard/${isExt ? 'external' : 'internal'}/${item.id}`} className="text-gray-800 dark:text-gray-200 text-sm font-bold hover:underline">Acessar →</a>
+        <div className="flex justify-between items-end mt-4 border-t border-slate-100 pt-3">
+          <span className="text-[10px] text-slate-400">Técnicos: {item.techs?.length > 0 ? item.techs.map((t:any)=>t.name).join(', ') : 'Nenhum'}</span>
+          <a href={`/dashboard/${isExt ? 'external' : 'internal'}/${item.id}`} className="text-slate-700 text-sm font-semibold hover:text-blue-600 transition-colors">Acessar →</a>
         </div>
       </div>
     );
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 transition-colors px-4 py-6 sm:p-8">
       <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Pesquisa Global & Histórico</h1>
-          <a href="/dashboard" className="text-gray-800 dark:text-gray-400 hover:underline font-medium text-lg">← Voltar</a>
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-blue-600 font-bold mb-1">Consultas</p>
+            <h1 className="text-3xl font-bold text-slate-800">Pesquisa Global &amp; Histórico</h1>
+          </div>
+          <a href="/dashboard" className="text-slate-500 hover:text-slate-700 hover:underline font-medium text-sm transition-colors">← Voltar</a>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
-          
-          {/* BARRA DE TEXTO (Esquerda) */}
-          <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-lg shadow border-t-4 border-blue-600 flex flex-col justify-center">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Buscar por Palavra-Chave</h2>
-            <input 
-              type="text" 
-              placeholder="Digite um patrimônio, setor, defeito, marca ou nome..." 
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-4 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-lg shadow-inner"
-            />
-            <p className="text-sm text-gray-500 mt-3 italic">
-              Resultados aparecerão automaticamente conforme você digita.
-            </p>
+        {/* Search + Calendar */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
+          {/* Text search */}
+          <div className="lg:col-span-2 bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 border-t-4 border-t-blue-600 flex flex-col justify-center">
+            <h2 className="text-lg font-bold text-slate-800 mb-4">Buscar por Palavra-Chave</h2>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Digite um patrimônio, setor, defeito, marca ou nome..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 pl-11 text-slate-800 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-base"
+              />
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-base">🔍</span>
+            </div>
+            <p className="text-sm text-slate-400 mt-3 italic">Resultados aparecerão automaticamente conforme você digita.</p>
           </div>
 
-          {/* CALENDÁRIO INTERATIVO (Direita) */}
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border-t-4 border-purple-600">
+          {/* Calendar */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 border-t-4 border-t-violet-600">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white">Buscar por Data</h2>
+              <h2 className="text-lg font-bold text-slate-800">Buscar por Data</h2>
               {selectedDate && (
-                <button onClick={() => setSelectedDate(null)} className="text-xs bg-red-100 text-red-600 font-bold px-2 py-1 rounded hover:bg-red-200 transition">Limpar Data</button>
+                <button onClick={() => setSelectedDate(null)} className="text-xs bg-red-50 text-red-600 font-semibold px-2.5 py-1 rounded-lg hover:bg-red-100 transition-colors border border-red-200">Limpar</button>
               )}
             </div>
-
-            {/* Cabeçalho do Calendário */}
-            <div className="flex justify-between items-center mb-4 bg-gray-100 dark:bg-gray-900 rounded-lg p-2">
-              <button onClick={() => changeMonth(-1)} className="p-1 hover:bg-gray-300 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300 font-bold px-3">{"<"}</button>
-              <span className="font-bold text-gray-900 dark:text-white uppercase text-sm tracking-widest">{monthNames[calMonth]} {calYear}</span>
-              <button onClick={() => changeMonth(1)} className="p-1 hover:bg-gray-300 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300 font-bold px-3">{">"}</button>
+            <div className="flex justify-between items-center mb-4 bg-slate-50 rounded-xl p-2 border border-slate-100">
+              <button onClick={() => changeMonth(-1)} className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-600 font-bold px-3 transition-colors">{"<"}</button>
+              <span className="font-bold text-slate-700 uppercase text-sm tracking-wider">{monthNames[calMonth]} {calYear}</span>
+              <button onClick={() => changeMonth(1)} className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-600 font-bold px-3 transition-colors">{">"}</button>
             </div>
-
-            {/* Dias da Semana */}
-            <div className="grid grid-cols-7 gap-1 text-center mb-2 text-xs font-bold text-gray-500 dark:text-gray-400">
+            <div className="grid grid-cols-7 gap-1 text-center mb-2 text-xs font-bold text-slate-400">
               <div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div>
             </div>
-
-            {/* Grid de Dias */}
             <div className="grid grid-cols-7 gap-1">
               {renderCalendarDays()}
             </div>
           </div>
         </div>
 
-        {/* ÁREA DE RESULTADOS */}
+        {/* Results */}
         {isLoading ? (
-          <div className="text-center py-20 text-gray-500 font-bold text-xl animate-pulse">Buscando na base de dados...</div>
+          <div className="text-center py-20 text-slate-400 font-semibold text-lg animate-pulse">Buscando na base de dados...</div>
         ) : (
           <div className="space-y-12">
-            
-            {/* Resultados Visitas Externas */}
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 border-b-2 border-blue-600 pb-2">
-                Atendimentos Encontrados ({resultsExt.length})
-              </h2>
+              <div className="flex items-center gap-3 mb-6">
+                <h2 className="text-2xl font-bold text-slate-800 border-b-2 border-blue-500 pb-2">Atendimentos Encontrados</h2>
+                <span className="bg-blue-50 text-blue-700 border border-blue-100 px-3 py-1 rounded-full text-sm font-bold">{resultsExt.length}</span>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {resultsExt.length === 0 ? (
-                  <p className="text-gray-500 italic col-span-full">Nenhum atendimento externo bate com a sua pesquisa.</p>
+                  <p className="text-slate-400 italic col-span-full">Nenhum atendimento externo bate com a sua pesquisa.</p>
                 ) : (
                   resultsExt.map(srv => renderCard(srv, 'EXT'))
                 )}
               </div>
             </div>
 
-            {/* Resultados Bancada Interna */}
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 border-b-2 border-gray-500 pb-2">
-                Equipamentos que Estão/Estiveram no Setor Encontrados ({resultsInt.length})
-              </h2>
+              <div className="flex items-center gap-3 mb-6">
+                <h2 className="text-2xl font-bold text-slate-800 border-b-2 border-slate-400 pb-2">Equipamentos que Estão/Estiveram no Setor</h2>
+                <span className="bg-slate-100 text-slate-700 border border-slate-200 px-3 py-1 rounded-full text-sm font-bold">{resultsInt.length}</span>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {resultsInt.length === 0 ? (
-                  <p className="text-gray-500 italic col-span-full">Nenhum equipamento bate com a sua pesquisa.</p>
+                  <p className="text-slate-400 italic col-span-full">Nenhum equipamento bate com a sua pesquisa.</p>
                 ) : (
                   resultsInt.map(maint => renderCard(maint, 'INT'))
                 )}
               </div>
             </div>
-
           </div>
         )}
       </div>
