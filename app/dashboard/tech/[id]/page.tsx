@@ -2,9 +2,19 @@ import prisma from "@/lib/prisma";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-export default async function TechHistoryPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function TechHistoryPage({ 
+  params,
+  searchParams 
+}: { 
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ q?: string }>;
+}) {
   const resolvedParams = await params;
   const id = resolvedParams.id;
+  
+  // Captura os parâmetros de busca da URL (Ex: ?q=monitor)
+  const resolvedSearchParams = await searchParams;
+  const query = resolvedSearchParams?.q?.toLowerCase() || "";
 
   const tech = await prisma.user.findUnique({
     where: { id },
@@ -23,6 +33,27 @@ export default async function TechHistoryPage({ params }: { params: Promise<{ id
   if (!tech) {
     return redirect("/dashboard");
   }
+
+  // Filtragem dos chamados baseada na pesquisa em tempo real no servidor
+  const filteredExternal = tech.externalServices.filter((srv: any) => {
+    if (!query) return true;
+    return (
+      srv.sector.name.toLowerCase().includes(query) ||
+      srv.description.toLowerCase().includes(query) ||
+      srv.status.replace(/_/g, ' ').toLowerCase().includes(query)
+    );
+  });
+
+  const filteredInternal = tech.internalMaintenances.filter((maint: any) => {
+    if (!query) return true;
+    return (
+      maint.deviceType.name.toLowerCase().includes(query) ||
+      maint.originSector.name.toLowerCase().includes(query) ||
+      maint.reportedProblem.toLowerCase().includes(query) ||
+      maint.status.replace(/_/g, ' ').toLowerCase().includes(query) ||
+      (maint.patrimony && maint.patrimony.toLowerCase().includes(query))
+    );
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 transition-colors px-4 py-6 sm:p-8">
@@ -47,12 +78,37 @@ export default async function TechHistoryPage({ params }: { params: Promise<{ id
             <div>
               <h2 className="text-xl font-bold text-slate-800 mb-1">Resumo de Atividades</h2>
               <p className="text-slate-500 text-sm">
-                Total de atendimentos: <strong className="text-slate-700">{tech.externalServices.length}</strong> |
+                Total de atendimentos: <strong className="text-slate-700">{tech.externalServices.length}</strong> | 
                 Total de equipamentos: <strong className="text-slate-700">{tech.internalMaintenances.length}</strong>
               </p>
             </div>
           </div>
         </div>
+
+        {/* Barra de Pesquisa Estilizada */}
+        <form method="GET" className="mb-8 flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              name="q"
+              defaultValue={query}
+              placeholder="Pesquisar por setor, equipamento, problema ou status..."
+              className="w-full bg-white border border-slate-200 rounded-xl p-3.5 pl-11 text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-none transition-all shadow-sm"
+            />
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+          </div>
+          <div className="flex gap-2">
+            <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3.5 rounded-xl font-semibold transition-all shadow-sm flex-1 sm:flex-none text-center">
+              Buscar
+            </button>
+            {/* Botão de Limpar só aparece se houver uma pesquisa ativa */}
+            {query && (
+              <a href={`/dashboard/tech/${id}`} className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-6 py-3.5 rounded-xl font-semibold transition-all shadow-sm flex items-center justify-center">
+                Limpar
+              </a>
+            )}
+          </div>
+        </form>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* EXTERNOS */}
@@ -63,16 +119,16 @@ export default async function TechHistoryPage({ params }: { params: Promise<{ id
                 Atendimentos Externos
               </h2>
               <span className="ml-auto text-xs font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
-                {tech.externalServices.length}
+                {filteredExternal.length}
               </span>
             </div>
             <div className="space-y-4">
-              {tech.externalServices.length === 0 ? (
+              {filteredExternal.length === 0 ? (
                 <div className="bg-white border border-slate-200 rounded-xl p-8 text-center">
-                  <p className="text-slate-400 text-sm">Nenhum atendimento externo registrado.</p>
+                  <p className="text-slate-400 text-sm">Nenhum atendimento externo encontrado.</p>
                 </div>
               ) : (
-                tech.externalServices.map((srv: any) => (
+                filteredExternal.map((srv: any) => (
                   <div
                     key={srv.id}
                     className={`bg-white p-5 rounded-2xl shadow-sm border border-slate-200 border-l-4 flex flex-col gap-3 transition-all duration-200 hover:shadow-md hover:border-slate-300 ${
@@ -118,16 +174,16 @@ export default async function TechHistoryPage({ params }: { params: Promise<{ id
                 Equipamentos no Setor
               </h2>
               <span className="ml-auto text-xs font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
-                {tech.internalMaintenances.length}
+                {filteredInternal.length}
               </span>
             </div>
             <div className="space-y-4">
-              {tech.internalMaintenances.length === 0 ? (
+              {filteredInternal.length === 0 ? (
                 <div className="bg-white border border-slate-200 rounded-xl p-8 text-center">
-                  <p className="text-slate-400 text-sm">Nenhum equipamento na bancada registrado.</p>
+                  <p className="text-slate-400 text-sm">Nenhum equipamento na bancada encontrado.</p>
                 </div>
               ) : (
-                tech.internalMaintenances.map((maint: any) => (
+                filteredInternal.map((maint: any) => (
                   <div
                     key={maint.id}
                     className={`bg-white p-5 rounded-2xl shadow-sm border border-slate-200 border-l-4 flex flex-col gap-3 transition-all duration-200 hover:shadow-md hover:border-slate-300 ${

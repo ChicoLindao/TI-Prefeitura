@@ -2,68 +2,100 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { sendNotificationEmail } from "@/lib/mailer";
 
-// 🛡️ SISTEMA DE PROTEÇÃO: "Caderninho" na memória para anotar os IPs
-const ipRateLimit = new Map<string, { count: number; startTime: number }>();
-const MAX_TICKETS = 3; // Limite de chamados por IP/Email
-const TIME_WINDOW_MS = 15 * 60 * 1000; // 15 minutos em milissegundos
+// 🛡️ SISTEMA DE PROTEÇÃO: "Caderninho" na memória
+const ipRateLimit = new Map<string, { count: number; startTime: number; lastWarning: number }>();
 
-// Carrega os selects do formulário
 export async function GET() {
   const sectors = await prisma.sector.findMany({ orderBy: { name: 'asc' } });
   const deviceTypes = await prisma.deviceType.findMany({ orderBy: { name: 'asc' } });
   return NextResponse.json({ sectors, deviceTypes });
 }
 
-// Salva a nova demanda
 export async function POST(req: Request) {
   try {
-    // --- INÍCIO DO CÃO DE GUARDA (RATE LIMIT) ---
+    // --- 1. LÓGICA DE TEMPO (HORÁRIO DE BRASÍLIA) ---
+    const now = new Date();
+    const brazilTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
     
-    // 1. Pega o IP do computador que está acessando
+    const dayOfWeek = brazilTime.getDay(); // 0 = Domingo, 6 = Sábado
+    const hour = brazilTime.getHours(); // 0 a 23
+
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    const isBusinessHours = !isWeekend && hour >= 8 && hour < 17;
+
+    // Regras Dinâmicas de Limite
+    const MAX_TICKETS = isBusinessHours ? 3 : 1; 
+    const TIME_WINDOW_MS = isBusinessHours ? 15 * 60 * 1000 : 24 * 60 * 60 * 1000;
+
+    // --- 2. PROTEÇÃO POR IP ---
     const ip = req.headers.get("x-forwarded-for")?.split(',')[0] || req.headers.get("x-real-ip") || "ip-desconhecido";
-    const now = Date.now();
+    const ipRecord = ipRateLimit.get(ip) || { count: 0, startTime: now.getTime(), lastWarning: 0 };
     
-    // Verifica o registro desse IP
-    const ipRecord = ipRateLimit.get(ip) || { count: 0, startTime: now };
-    
-    // Se já passou o tempo de castigo (15 min), zera a contagem
-    if (now - ipRecord.startTime > TIME_WINDOW_MS) {
+    if (now.getTime() - ipRecord.startTime > TIME_WINDOW_MS) {
       ipRecord.count = 0;
-      ipRecord.startTime = now;
+      ipRecord.startTime = now.getTime();
     }
 
-    // Se esse IP já passou do limite, bloqueamos imediatamente
-    if (ipRecord.count >= MAX_TICKETS) {
-      return NextResponse.json(
-        { error: "Muitas solicitações deste computador. Por favor, aguarde 15 minutos." }, 
-        { status: 429 } // 429 = Too Many Requests
-      );
+    // Soma +1 tentativa logo de cara
+    ipRecord.count += 1;
+    ipRateLimit.set(ip, ipRecord);
+
+    // FUNÇÃO AUXILIAR: Bloqueia e Notifica a TI
+    const handleRateLimitExceeded = async (blockType: string, identifier: string) => {
+      console.log(`[PROTEÇÃO] Bloqueio ativado por ${blockType} (${identifier}). IP: ${ip}`);
+      
+      // Trava de 1 hora recolocada para não lotar sua caixa de entrada
+      if (now.getTime() - ipRecord.lastWarning > 60 * 60 * 1000) {
+        try {
+          await sendNotificationEmail(
+            "chicolima1996@gmail.com", // 🔴 SEU E-MAIL
+            `⚠️ ALERTA: Spam bloqueado (${blockType})`,
+            `<p>O sistema de proteção bloqueou a abertura de chamados.</p>
+             <p><b>Gatilho:</b> Limite atingido por ${blockType} (${identifier}).</p>
+             <p><b>Contexto:</b> ${isBusinessHours ? 'Horário Comercial' : 'Fora do Horário/Fim de semana'}</p>
+             <p><b>Regra Ativa:</b> Bloqueado após ${MAX_TICKETS} tentativa(s).</p>`
+          );
+          ipRecord.lastWarning = now.getTime();
+          ipRateLimit.set(ip, ipRecord);
+          console.log("[PROTEÇÃO] E-mail enviado para TI.");
+        } catch (error) {
+          console.error("[PROTEÇÃO] Erro no e-mail:", error);
+        }
+      }
+
+      if (isWeekend) {
+        return "Fim de semana detectado. Nosso limite é de apenas 1 chamado por dia. Tente novamente no próximo dia útil.";
+      } else if (!isBusinessHours) {
+        return "Fora do horário comercial (08h às 17h), permitimos apenas 1 chamado por dia. Tente novamente a partir das 08h.";
+      } else {
+        return "Muitas solicitações deste computador. Por favor, aguarde 15 minutos.";
+      }
+    };
+
+    // Verifica IP
+    if (ipRecord.count > MAX_TICKETS) {
+      const errorMsg = await handleRateLimitExceeded("IP", ip);
+      return NextResponse.json({ error: errorMsg }, { status: 429 });
     }
-    // --- FIM DA PROTEÇÃO DE IP ---
 
     const data = await req.json();
     
-    // 2. Proteção Extra via Prisma (Verifica pelo E-mail do solicitante)
-    const fifteenMinutesAgo = new Date(Date.now() - TIME_WINDOW_MS);
+    // --- 3. PROTEÇÃO EXTRA POR E-MAIL NO PRISMA ---
+    const windowStartDate = new Date(now.getTime() - TIME_WINDOW_MS);
 
     if (data.type === 'EXTERNAL') {
-      
-      // Conta quantos chamados esse e-mail abriu nos últimos 15 min
       const recentTickets = await prisma.externalService.count({
         where: {
           userEmail: data.userEmail,
-          createdAt: { gte: fifteenMinutesAgo }
+          createdAt: { gte: windowStartDate }
         }
       });
 
       if (recentTickets >= MAX_TICKETS) {
-        return NextResponse.json(
-          { error: "Este e-mail já registrou muitos chamados recentes. Aguarde 15 minutos." }, 
-          { status: 429 }
-        );
+        const errorMsg = await handleRateLimitExceeded("E-mail", data.userEmail);
+        return NextResponse.json({ error: errorMsg }, { status: 429 });
       }
 
-      // Tudo certo! Registra o chamado...
       const newTicket = await prisma.externalService.create({
         data: {
           sectorId: data.sectorId,
@@ -81,26 +113,19 @@ export async function POST(req: Request) {
         `<p>Olá, <b>${data.personAttended}</b>.</p><p>Recebemos sua solicitação de atendimento para o setor <b>${newTicket.sector.name}</b>.</p><p><b>Problema relatado:</b> ${data.description}</p><p>Em breve nossa equipe iniciará o atendimento.</p>`
       );
       
-      // E anota +1 na ficha desse IP
-      ipRecord.count += 1;
-      ipRateLimit.set(ip, ipRecord);
-
       return NextResponse.json({ message: "Chamado aberto!" }, { status: 201 });
       
     } else {
-      // (A mesma verificação de e-mail pode ser feita aqui para manutenções internas)
       const recentMaintenances = await prisma.internalMaintenance.count({
         where: {
           userEmail: data.userEmail,
-          receiveDate: { gte: fifteenMinutesAgo }
+          receiveDate: { gte: windowStartDate }
         }
       });
 
       if (recentMaintenances >= MAX_TICKETS) {
-        return NextResponse.json(
-          { error: "Este e-mail já registrou muitas manutenções recentes. Aguarde 15 minutos." }, 
-          { status: 429 }
-        );
+        const errorMsg = await handleRateLimitExceeded("E-mail", data.userEmail);
+        return NextResponse.json({ error: errorMsg }, { status: 429 });
       }
 
       const newMaintenance = await prisma.internalMaintenance.create({
@@ -122,13 +147,10 @@ export async function POST(req: Request) {
         `<p>Olá, <b>${data.personAttended}</b>.</p><p>Registramos a entrada do seu equipamento (${newMaintenance.deviceType.name}) vindo do setor <b>${newMaintenance.originSector.name}</b>.</p><p><b>Defeito:</b> ${data.description}</p><p>Avisaremos neste e-mail assim que ele estiver pronto para retirada.</p>`
       );
 
-      // E anota +1 na ficha desse IP
-      ipRecord.count += 1;
-      ipRateLimit.set(ip, ipRecord);
-
       return NextResponse.json({ message: "Equipamento registrado!" }, { status: 201 });
     }
   } catch (error) {
+    console.error("Erro na API:", error);
     return NextResponse.json({ error: "Erro ao criar chamado" }, { status: 500 });
   }
 }
