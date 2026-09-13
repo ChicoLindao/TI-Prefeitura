@@ -110,7 +110,7 @@ export default function GlobalSearchPage() {
               />
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-base">🔍</span>
             </div>
-            <p className="text-sm text-slate-400 mt-3 italic">Os números abaixo atualizarão em tempo real conforme você digita.</p>
+            <p className="text-sm text-slate-400 mt-3 italic">Os chamados aparecerão abaixo e atualizarão em tempo real conforme você digita.</p>
           </div>
 
           {/* Calendar */}
