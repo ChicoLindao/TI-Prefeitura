@@ -105,8 +105,6 @@ export default async function PublicDashboard() {
           >
             <span className="text-lg">📞</span> (51) 93505-2374
           </a>
-
-          <span className="hidden sm:block w-px bg-slate-200 self-stretch my-1" />
         </div>
       </div>
 

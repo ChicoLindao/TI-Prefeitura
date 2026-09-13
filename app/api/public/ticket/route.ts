@@ -36,7 +36,20 @@ export async function POST(req: Request) {
     const TIME_WINDOW_MS = isBusinessHours ? 15 * 60 * 1000 : 24 * 60 * 60 * 1000;
 
     // --- 3. PROTEÇÃO POR IP (AGORA NO BANCO DE DADOS) ---
-    const ip = req.headers.get("x-forwarded-for")?.split(',')[0] || req.headers.get("x-real-ip") || "ip-desconhecido";
+    
+    // Vasculha todos os cabeçalhos possíveis
+    const cfIp = req.headers.get("cf-connecting-ip");
+    const forwardedIp = req.headers.get("x-forwarded-for");
+    const realIp = req.headers.get("x-real-ip");
+
+    // Imprime no terminal do servidor para sabermos quem está mentindo
+    console.log(`[DEBUG DE IP] Cloudflare: ${cfIp} | Forwarded: ${forwardedIp} | Real: ${realIp}`);
+
+    // Pega o IP mais confiável na hierarquia
+    let rawIp = cfIp || (forwardedIp ? forwardedIp.split(',')[0].trim() : null) || realIp || "ip-desconhecido";
+    
+    // Limpa a sujeira do IPv6 mascarado
+    const ip = rawIp.replace("::ffff:", "");
     
     // Busca ou cria o registro do IP no banco
     let ipRecord = await prisma.ipRateLimit.upsert({
