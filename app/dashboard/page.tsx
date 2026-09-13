@@ -255,7 +255,7 @@ export default async function DashboardPage() {
               <div>
                 <h3 className="text-xl font-bold text-slate-700 mb-4 border-b-2 border-slate-700 pb-2">Setor em Aberto ({myActiveInt.length})</h3>
                 <div className="space-y-4 max-h-[450px] overflow-y-auto pr-2">
-                  {myActiveInt.length === 0 ? <p className="text-slate-400 italic">Você não tem equipamentos na bancada.</p> : myActiveInt.map(maint => renderCard(maint, 'INT'))}
+                  {myActiveInt.length === 0 ? <p className="text-slate-400 italic">Você não tem equipamentos designados.</p> : myActiveInt.map(maint => renderCard(maint, 'INT'))}
                 </div>
               </div>
             </div>
