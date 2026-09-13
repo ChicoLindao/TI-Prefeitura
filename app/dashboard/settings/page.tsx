@@ -372,8 +372,19 @@ export default function GlobalSettings() {
                 <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
                   {blockedEmails.map((b: any) => (
                     <div key={b.id} className="flex items-center justify-between bg-slate-50 rounded-xl p-3 border border-slate-100">
-                      <span className="text-slate-700 text-sm font-medium truncate">{b.email}</span>
-                      <button onClick={() => handleSecurityAction(b.id, 'removeBlockedEmail')} className="text-red-500 font-semibold text-sm hover:text-red-700 transition-colors hover:underline ml-2">
+                      <div className="flex flex-col truncate mr-2">
+                        <span className="text-slate-700 text-sm font-medium truncate">{b.email}</span>
+                        {b.isTemporary ? (
+                          <span className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md w-fit mt-1 font-medium">
+                            ⏳ Temporário {b.expiresAt ? `(Expira: ${new Date(b.expiresAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })})` : ''}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-md w-fit mt-1 font-medium">
+                            🚫 Permanente
+                          </span>
+                        )}
+                      </div>
+                      <button onClick={() => handleSecurityAction(b.id, 'removeBlockedEmail')} className="text-red-500 font-semibold text-sm hover:text-red-700 transition-colors hover:underline ml-2 whitespace-nowrap">
                         Remover
                       </button>
                     </div>
@@ -422,8 +433,8 @@ export default function GlobalSettings() {
         ) : (
           
         /* =========================================
-           CONTEÚDO DAS OUTRAS ABAS (EQUIPE/SETORES)
-           ========================================= */
+            CONTEÚDO DAS OUTRAS ABAS (EQUIPE/SETORES)
+            ========================================= */
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-300">
             {/* Formulário */}
             <div className="lg:col-span-1 bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-slate-800 h-fit">
