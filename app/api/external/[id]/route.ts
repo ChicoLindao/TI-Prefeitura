@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import nodemailer from "nodemailer";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { triggerUpdate } from "@/lib/ws";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
@@ -50,7 +51,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (techId) dataToSave.tech = { connect: { id: techId } };
     await prisma.externalServiceLog.create({ data: dataToSave });
 
-    // Envia e-mail para o usuário (solicitante)
+    // 🔥 GATILHO: Status do Chamado
+    await triggerUpdate('nova-demanda', { tipo: 'CHAMADO', setor: 'Status Atualizado' });
+
     if (updatedService.userEmail) {
       try {
         const transporter = nodemailer.createTransport({ service: "gmail", auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS } });
@@ -70,6 +73,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const dataToSave: any = { description: body.logText, type: "MANUAL", externalService: { connect: { id } } };
     if (techId) dataToSave.tech = { connect: { id: techId } };
     await prisma.externalServiceLog.create({ data: dataToSave });
+
+    // 🔥 GATILHO: Novo Histórico
+    await triggerUpdate('nova-demanda', { tipo: 'CHAMADO', setor: 'Novo Histórico' });
   }
 
   if (body.actionType === "UPDATE_TECHS") {
@@ -77,6 +83,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       where: { id },
       data: { techs: { set: body.techIds.map((tId: string) => ({ id: tId })) } }
     });
+
+    // 🔥 GATILHO: Técnico Atribuído
+    await triggerUpdate('nova-demanda', { tipo: 'CHAMADO', setor: 'Técnico Atribuído' });
+
     if (body.addedTechId) {
       const tech = await prisma.user.findUnique({ where: { id: body.addedTechId } });
       const srv = await prisma.externalService.findUnique({ where: { id }, include: { sector: true }});
@@ -105,6 +115,10 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   const id = resolvedParams.id;
   try {
     await prisma.externalService.delete({ where: { id } });
+
+    // 🔥 GATILHO: Chamado Excluído (Para sumir da tela pública na hora)
+    await triggerUpdate('nova-demanda', { tipo: 'CHAMADO', setor: 'Chamado Excluído' });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: "Erro ao excluir" }, { status: 500 });

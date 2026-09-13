@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { triggerUpdate } from "@/lib/ws";
 
 export async function GET() {
   try {
@@ -16,6 +17,8 @@ export async function GET() {
       },
       orderBy: { receiveDate: "asc" }
     });
+
+    // 🔥 GATILHO REMOVIDO DAQUI (Não atira mais ao carregar a página)
 
     return NextResponse.json(maintenances);
   } catch (error) {
@@ -46,10 +49,10 @@ export async function POST(req: Request) {
         deviceTypeId,
         reportedProblem,
         status: "PENDENTE"
-      }
+      },
+      include: { originSector: true } // Incluído para pegar o nome do setor para o aviso
     });
 
-    // MÁGICA: Removido o 'type', pois essa tabela não possui essa coluna
     const logData: any = {
       action: "Equipamento cadastrado e inserido na fila da bancada.",
       internalMaintenance: { connect: { id: newMaintenance.id } }
@@ -60,6 +63,9 @@ export async function POST(req: Request) {
     }
 
     await prisma.internalMaintenanceLog.create({ data: logData });
+
+    // 🔥 GATILHO ADICIONADO AQUI: Dispara apenas quando o técnico cria a OS!
+    await triggerUpdate('nova-demanda', { tipo: 'EQUIPAMENTO', setor: newMaintenance.originSector?.name || 'TI' });
 
     return NextResponse.json({ message: "Equipamento adicionado com sucesso!", maintenance: newMaintenance }, { status: 201 });
   } catch (error) {

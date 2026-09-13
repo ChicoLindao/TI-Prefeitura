@@ -5,8 +5,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
-import AutoRefresh from "@/app/components/AutoRefresh";
-import Notifier from "@/app/components/Notifier";
 import LogoutButton from "@/app/components/LogoutButton";
 
 function timeAgo(date: Date) {
@@ -107,16 +105,6 @@ export default async function DashboardPage() {
     });
   }
 
-  // AGORA SIM: Passa todos os chamados completos para o Notificador (Admins e Técnicos)
-  const ticketsForNotification = [
-    ...adminActiveExt,
-    ...adminActiveInt,
-    ...myActiveExt,
-    ...myActiveInt,
-    ...globalActiveExt,
-    ...globalActiveInt
-  ];
-
   const renderCard = (item: any, type: 'EXT' | 'INT') => {
     const isExt = type === 'EXT';
     const isResolved = item.status === 'ENTREGUE' || item.status === 'PRONTO_PARA_RETIRADA';
@@ -155,10 +143,6 @@ export default async function DashboardPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 transition-colors px-4 py-6 sm:p-8">
       
-      <AutoRefresh interval={30000} />
-      {/* AGORA SIM: Enviando a lista completa de chamados + ID do usuário para saber se ele foi designado */}
-      <Notifier tickets={ticketsForNotification} currentUserId={user.id} />
-
       <div className="max-w-7xl mx-auto">
         <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div><p className="text-xs uppercase tracking-[0.2em] text-blue-600 font-bold mb-1">Central de atendimento</p><h1 className="text-3xl font-bold text-slate-800">Painel do Sistema</h1></div>

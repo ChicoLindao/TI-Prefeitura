@@ -7,18 +7,27 @@ const dev = process.env.NODE_ENV !== "production";
 const app = next({ dev });
 const handle = app.getRequestHandler();
 
+// 🛡️ BLINDAGEM CONTRA QUEDAS (ECONNRESET)
+// Impede que o servidor caia quando o navegador cortar a conexão bruscamente
+process.on('uncaughtException', (err) => {
+  if (err.code === 'ECONNRESET') {
+    // Ignora silenciosamente
+    return;
+  }
+  console.error('Erro crítico:', err);
+});
+
 app.prepare().then(() => {
   const server = createServer((req, res) => {
     const parsedUrl = parse(req.url, true);
     
-    // Rota interna secreta: As APIs do Next.js vão chamar essa rota para mandar o WebSocket apitar!
+    // Rota interna secreta
     if (parsedUrl.pathname === '/api/ws-trigger' && req.method === 'POST') {
       let body = '';
       req.on('data', chunk => { body += chunk.toString(); });
       req.on('end', () => {
         try {
           const data = JSON.parse(body);
-          // Dispara o evento para todos os técnicos com o painel aberto
           io.emit(data.event, data.payload);
           res.statusCode = 200;
           res.end(JSON.stringify({ success: true }));
@@ -30,11 +39,9 @@ app.prepare().then(() => {
       return;
     }
 
-    // Se não for o gatilho, deixa o Next.js carregar a página normalmente
     handle(req, res, parsedUrl);
   });
 
-  // Configura o carteiro do WebSocket
   const io = new Server(server, {
     path: "/api/socket",
     addTrailingSlash: false,

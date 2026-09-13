@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import nodemailer from "nodemailer";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { triggerUpdate } from "@/lib/ws";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
@@ -51,7 +52,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (techId) dataToSave.tech = { connect: { id: techId } };
     await prisma.internalMaintenanceLog.create({ data: dataToSave });
 
-    // Envia e-mail para o usuário (solicitante)
+    // 🔥 GATILHO: Status do Equipamento
+    await triggerUpdate('nova-demanda', { tipo: 'EQUIPAMENTO', setor: 'Status Atualizado' });
+
     if (updatedMaint.userEmail) {
       try {
         const transporter = nodemailer.createTransport({ service: "gmail", auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS } });
@@ -71,6 +74,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const dataToSave: any = { action: body.actionText, internalMaintenance: { connect: { id } } };
     if (techId) dataToSave.tech = { connect: { id: techId } };
     await prisma.internalMaintenanceLog.create({ data: dataToSave });
+
+    // 🔥 GATILHO: Novo Histórico Bancada
+    await triggerUpdate('nova-demanda', { tipo: 'EQUIPAMENTO', setor: 'Novo Histórico' });
   }
 
   if (body.actionType === "UPDATE_TECHS") {
@@ -78,6 +84,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       where: { id },
       data: { techs: { set: body.techIds.map((tId: string) => ({ id: tId })) } }
     });
+
+    // 🔥 GATILHO: Técnico Atribuído Bancada
+    await triggerUpdate('nova-demanda', { tipo: 'EQUIPAMENTO', setor: 'Técnico Atribuído' });
+
     if (body.addedTechId) {
       const tech = await prisma.user.findUnique({ where: { id: body.addedTechId } });
       const maint = await prisma.internalMaintenance.findUnique({ where: { id }, include: { deviceType: true, originSector: true }});
@@ -106,6 +116,10 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   const id = resolvedParams.id;
   try {
     await prisma.internalMaintenance.delete({ where: { id } });
+
+    // 🔥 GATILHO: Equipamento Excluído
+    await triggerUpdate('nova-demanda', { tipo: 'EQUIPAMENTO', setor: 'OS Excluída' });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: "Erro ao excluir" }, { status: 500 });

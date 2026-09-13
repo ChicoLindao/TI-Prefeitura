@@ -1,6 +1,9 @@
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import prisma from "@/lib/prisma";
 import Image from "next/image";
+import PublicSocketListener from "@/app/components/PublicSocketListener";
 
 function formatDate(date: Date) {
   return new Date(date).toLocaleDateString("pt-BR", {
@@ -44,6 +47,9 @@ export default async function PublicDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">
+      
+      {/* OUVINTE INVISÍVEL PARA ATUALIZAÇÃO EM TEMPO REAL */}
+      <PublicSocketListener />
 
       {/* HERO */}
       <div className="w-full max-w-5xl mb-10 flex flex-col items-center text-center">

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { triggerUpdate } from "@/lib/ws";
 
 export async function GET() {
   try {
@@ -14,6 +15,8 @@ export async function GET() {
     
     // Busca os setores para popular o formulário interno
     const sectors = await prisma.sector.findMany({ orderBy: { name: 'asc' } });
+
+    // 🔥 GATILHO REMOVIDO DAQUI (Não atira mais ao carregar a página)
     
     return NextResponse.json({ services, sectors });
   } catch (error) {
@@ -32,8 +35,12 @@ export async function POST(req: Request) {
         userEmail,
         description,
         status: "PENDENTE"
-      }
+      },
+      include: { sector: true } // Incluído para pegar o nome do setor para o aviso
     });
+
+    // 🔥 GATILHO ADICIONADO AQUI: Dispara apenas quando o técnico clica em criar!
+    await triggerUpdate('nova-demanda', { tipo: 'CHAMADO', setor: newService.sector?.name || 'TI' });
 
     return NextResponse.json(newService, { status: 201 });
   } catch (error) {
