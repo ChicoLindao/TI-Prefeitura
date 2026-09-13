@@ -124,7 +124,7 @@ export default function ExternalServiceDetails({ params }: { params: Promise<{ i
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-blue-600 font-bold mb-1">Atendimento externo</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-blue-600 font-bold mb-1">Atendimento</p>
             <h1 className="text-3xl font-bold text-slate-800">Gerenciar Atendimento</h1>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -168,7 +168,7 @@ export default function ExternalServiceDetails({ params }: { params: Promise<{ i
           {/* Info grid */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm bg-slate-50 p-5 rounded-xl border border-slate-100 mb-6">
             <div>
-              <span className="block text-[11px] text-slate-400 uppercase font-bold mb-1 tracking-wider">Falar Com</span>
+              <span className="block text-[11px] text-slate-400 uppercase font-bold mb-1 tracking-wider">Usuário</span>
               <span className="font-medium text-slate-700">{data.personAttended}</span>
             </div>
             <div>

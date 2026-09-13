@@ -58,7 +58,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           from: process.env.EMAIL_USER,
           to: updatedService.userEmail,
           subject: `Atualização no Chamado: ${updatedService.sector.name}`,
-          html: `<h3>Seu chamado de TI foi atualizado!</h3>
+          html: `<h3>Seu chamado foi atualizado!</h3>
                  <p>O novo status do seu atendimento é: <strong>${body.status.replace(/_/g, ' ')}</strong></p>
                  <p>Você pode acompanhar os detalhes acessando o painel principal do TI.</p>`
         }).catch(err => console.log("Erro no e-mail do usuário:", err));

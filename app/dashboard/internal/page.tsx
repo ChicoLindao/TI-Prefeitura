@@ -82,7 +82,7 @@ export default function InternalMaintenance() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-blue-600 font-bold mb-1">Manutenção interna</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-blue-600 font-bold mb-1">Equipamentos no Setor</p>
             <h1 className="text-3xl font-bold text-slate-800">Setor</h1>
           </div>
           <a href="/dashboard" className="text-slate-500 hover:text-slate-700 hover:underline font-medium text-sm transition-colors">← Voltar ao Painel</a>
@@ -90,7 +90,7 @@ export default function InternalMaintenance() {
 
         {/* Form card */}
         <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 mb-10 border-t-4 border-t-slate-800">
-          <h2 className="text-xl font-bold text-slate-800 mb-1">Adicionar Equipamento na Bancada</h2>
+          <h2 className="text-xl font-bold text-slate-800 mb-1">Adicionar Equipamento no Setor</h2>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
             <select required value={deviceTypeId} onChange={e => setDeviceTypeId(e.target.value)} className="border border-slate-200 bg-white text-slate-800 p-3 rounded-xl border-l-4 border-l-red-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-none transition-all">
               <option value="">Qual o equipamento? *</option>

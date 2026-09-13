@@ -70,8 +70,8 @@ export default function ExternalServices() {
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-blue-600 font-bold mb-1">Atendimento externo</p>
-            <h1 className="text-3xl font-bold text-slate-800">Visitas</h1>
+            <p className="text-xs uppercase tracking-[0.2em] text-blue-600 font-bold mb-1">Atendimentos</p>
+            <h1 className="text-3xl font-bold text-slate-800">Chamados</h1>
           </div>
           <a href="/dashboard" className="text-slate-500 hover:text-slate-700 hover:underline font-medium text-sm transition-colors">← Voltar ao Painel</a>
         </div>
@@ -87,7 +87,7 @@ export default function ExternalServices() {
             <input required type="email" placeholder="E-mail da pessoa (Para atualizações) *" value={userEmail} onChange={e => setUserEmail(e.target.value)} className="border border-slate-200 bg-white text-slate-800 p-3 rounded-xl placeholder-slate-300 border-l-4 border-l-red-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-none transition-all md:col-span-2" />
             <input required type="text" placeholder="Qual o problema? *" value={description} onChange={e => setDescription(e.target.value)} className="border border-slate-200 bg-white text-slate-800 p-3 rounded-xl placeholder-slate-300 border-l-4 border-l-red-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-none transition-all md:col-span-2" />
             <button type="submit" className="md:col-span-2 bg-blue-600 text-white p-4 rounded-xl font-semibold hover:bg-blue-700 transition-all duration-200 text-base mt-2 shadow-sm hover:shadow-md">
-              Abrir Chamado Externo
+              Abrir Chamado
             </button>
           </form>
         </div>

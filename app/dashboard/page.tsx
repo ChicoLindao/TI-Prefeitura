@@ -187,10 +187,10 @@ export default async function DashboardPage() {
           <a href="/dashboard/internal" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 border-b-4 border-b-slate-700 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 text-center font-semibold text-slate-700">🏢 Setor</a>
           
           <a href="/dashboard/infra" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 border-b-4 border-b-emerald-600 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 text-center font-semibold text-slate-700">
-            📡 Informações Úteis
+            📡 Infraestrutura
           </a>
 
-          <a href="/dashboard/search" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 border-b-4 border-b-cyan-600 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 text-center font-semibold text-slate-700">🔍 Pesquisa Global</a>
+          <a href="/dashboard/search" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 border-b-4 border-b-cyan-600 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 text-center font-semibold text-slate-700">🔍 Pesquisa</a>
           
           {isAdmin && (
             <a href="/dashboard/settings" className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 border-b-4 border-b-red-600 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 text-center font-semibold text-slate-700">⚙️ Configurações</a>

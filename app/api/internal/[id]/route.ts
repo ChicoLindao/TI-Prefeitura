@@ -58,9 +58,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         transporter.sendMail({
           from: process.env.EMAIL_USER,
           to: updatedMaint.userEmail,
-          subject: `Atualização na Bancada: ${updatedMaint.deviceType.name}`,
+          subject: `Atualização no Equipamento: ${updatedMaint.deviceType.name}`,
           html: `<h3>O status do seu equipamento mudou!</h3>
-                 <p>O equipamento que está na bancada agora consta como: <strong>${body.status.replace(/_/g, ' ')}</strong></p>
+                 <p>O equipamento que está no setor agora consta como: <strong>${body.status.replace(/_/g, ' ')}</strong></p>
                  <p>Você pode acompanhar o andamento no painel principal do TI.</p>`
         }).catch(err => console.log("Erro no e-mail do usuário:", err));
       } catch (error) { console.error("Erro ao configurar email:", error); }
@@ -87,7 +87,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           transporter.sendMail({
             from: process.env.EMAIL_USER,
             to: tech.email,
-            subject: `Novo Chamado na Bancada: ${maint.deviceType.name}`,
+            subject: `Novo Equipamento no Setor: ${maint.deviceType.name}`,
             html: `<h3>Você foi designado para um equipamento!</h3><p><a href="${process.env.NEXTAUTH_URL}/dashboard/internal/${id}">Acessar Chamado no Sistema</a></p>`
           }).catch(err => console.log("Erro no e-mail:", err));
         } catch (error) { console.error("Erro ao enviar email:", error); }

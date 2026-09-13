@@ -175,7 +175,7 @@ export default function NovoChamado() {
             disabled={loading} 
             className="w-full bg-blue-600 text-white px-4 py-4 rounded-xl font-semibold hover:bg-blue-700 transition-all duration-200 shadow-sm hover:shadow-md disabled:bg-slate-300 disabled:cursor-not-allowed text-base"
           >
-            {loading ? "Registrando..." : "Solicitar Visita Técnica"}
+            {loading ? "Registrando..." : "Solicitar Atendimento"}
           </button>
         </form>
       </div>

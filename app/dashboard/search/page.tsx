@@ -90,7 +90,7 @@ export default function GlobalSearchPage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-blue-600 font-bold mb-1">Consultas</p>
-            <h1 className="text-3xl font-bold text-slate-800">Pesquisa Global &amp; Relatório</h1>
+            <h1 className="text-3xl font-bold text-slate-800">Pesquisa &amp; Relatório</h1>
           </div>
           <a href="/dashboard" className="text-slate-500 hover:text-slate-700 hover:underline font-medium text-sm transition-colors">← Voltar</a>
         </div>
@@ -150,7 +150,7 @@ export default function GlobalSearchPage() {
                 <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-3xl mb-4">
                   🖥️
                 </div>
-                <h3 className="text-slate-500 font-semibold mb-2 uppercase tracking-wider text-sm">Equipamentos no Setor</h3>
+                <h3 className="text-slate-500 font-semibold mb-2 uppercase tracking-wider text-sm">Equipamentos que passaram pelo Setor</h3>
                 <span className="text-6xl font-bold text-slate-800">{stats.internal}</span>
                 <p className="text-sm text-slate-400 mt-4">
                   {selectedDate ? `Registrados no dia ${selectedDate.split('-').reverse().join('/')}` : `Registrados em ${monthNames[calMonth]} de ${calYear}`}
@@ -162,7 +162,7 @@ export default function GlobalSearchPage() {
                 <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center text-3xl mb-4">
                   🏃‍♂️
                 </div>
-                <h3 className="text-slate-500 font-semibold mb-2 uppercase tracking-wider text-sm">Atendimentos Externos</h3>
+                <h3 className="text-slate-500 font-semibold mb-2 uppercase tracking-wider text-sm">Atendimentos Realizados</h3>
                 <span className="text-6xl font-bold text-blue-600">{stats.external}</span>
                 <p className="text-sm text-slate-400 mt-4">
                   {selectedDate ? `Realizados no dia ${selectedDate.split('-').reverse().join('/')}` : `Realizados em ${monthNames[calMonth]} de ${calYear}`}

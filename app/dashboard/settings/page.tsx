@@ -320,7 +320,7 @@ export default function GlobalSettings() {
                 <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
                   <span className="text-lg">🛡️</span>
                 </div>
-                <h2 className="text-lg font-bold text-slate-800">IPs Monitorados</h2>
+                <h2 className="text-lg font-bold text-slate-800">IPs Bloqueados</h2>
               </div>
               {ipLimits.length === 0 ? (
                 <p className="text-sm text-slate-400 text-center py-8">Nenhum IP com tentativas registradas.</p>
