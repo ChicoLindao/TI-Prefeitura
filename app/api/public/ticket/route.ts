@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { sendNotificationEmail } from "@/lib/mailer";
+import { triggerUpdate } from "@/lib/ws"; // <-- Importação do gatilho
 
 export async function GET() {
   const sectors = await prisma.sector.findMany({ orderBy: { name: 'asc' } });
@@ -31,11 +32,9 @@ export async function POST(req: Request) {
       });
       
       if (blockRecord) {
-        // Se for temporário e o cronômetro já zerou, apaga do banco e deixa passar!
         if (blockRecord.isTemporary && blockRecord.expiresAt && blockRecord.expiresAt < now) {
           await prisma.blockedEmail.delete({ where: { email: data.userEmail } });
         } else {
-          // Continua bloqueado (rejeita a conexão)
           const tipo = blockRecord.isTemporary ? "temporariamente por limite de chamados" : "permanentemente pelo administrador";
           return NextResponse.json({ error: `Este e-mail está bloqueado ${tipo}.` }, { status: 403 });
         }
@@ -56,7 +55,6 @@ export async function POST(req: Request) {
     // FUNÇÃO AUXILIAR: Bloqueia, Notifica e ADICIONA NA LISTA DA UI
     const handleRateLimitExceeded = async (blockType: string, identifier: string, triggerIp: string) => {
       
-      // Joga o e-mail na lista da interface para a TI ver e conseguir excluir!
       if (blockType === "E-mail Múltiplo") {
         const expirationDate = new Date(now.getTime() + TIME_WINDOW_MS);
         await prisma.blockedEmail.upsert({
@@ -151,6 +149,9 @@ export async function POST(req: Request) {
         include: { sector: true }
       });
       
+      // 👉 Gatilho WebSocket para Chamados Externos:
+      await triggerUpdate('nova-demanda', { tipo: 'CHAMADO', setor: newTicket.sector.name });
+
       return NextResponse.json({ message: "Chamado aberto!" }, { status: 201 });
       
     } else {
@@ -175,6 +176,9 @@ export async function POST(req: Request) {
         },
         include: { originSector: true, deviceType: true }
       });
+
+      // 👉 Gatilho WebSocket para Equipamentos:
+      await triggerUpdate('nova-demanda', { tipo: 'EQUIPAMENTO', setor: newMaintenance.originSector.name });
 
       return NextResponse.json({ message: "Equipamento registrado!" }, { status: 201 });
     }

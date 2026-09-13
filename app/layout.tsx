@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Sistema do Setor de Informática",
-  description: "Gerenciamento de Demandas",
+  title: "Sistema do Departamento de Informática",
+  description: "Gerenciamento de Chamados",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

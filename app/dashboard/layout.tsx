@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
+import SocketListener from '@/app/components/SocketListener';
 
 export default async function DashboardLayout({
   children,
@@ -15,5 +16,11 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  return <section>{children}</section>;
+  return (
+    <section>
+      {/* O ouvinte fica aqui, escondido, operando em todas as telas do Dashboard! */}
+      <SocketListener />
+      {children}
+    </section>
+  );
 }
