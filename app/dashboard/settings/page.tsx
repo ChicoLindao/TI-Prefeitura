@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 export default function GlobalSettings() {
   const [activeTab, setActiveTab] = useState("EQUIPE");
   
+  // --- ESTADOS: EQUIPE, SETORES E EQUIPAMENTOS ---
   const [users, setUsers] = useState<any[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -16,6 +17,14 @@ export default function GlobalSettings() {
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [newItemName, setNewItemName] = useState("");
 
+  // --- ESTADOS: SEGURANÇA ---
+  const [ipLimits, setIpLimits] = useState<any[]>([]);
+  const [blockedEmails, setBlockedEmails] = useState<any[]>([]);
+  const [alertEmails, setAlertEmails] = useState<any[]>([]);
+  const [newBlockedEmail, setNewBlockedEmail] = useState("");
+  const [newAlertEmail, setNewAlertEmail] = useState("");
+
+  // --- ESTADOS: GLOBAIS (UX) ---
   const [toast, setToast] = useState({ show: false, message: "", type: "success" });
   const [modal, setModal] = useState({ show: false, title: "", message: "", onConfirm: () => {} });
 
@@ -25,17 +34,32 @@ export default function GlobalSettings() {
   };
 
   const fetchData = async () => {
-    const resUsers = await fetch("/api/users");
-    setUsers(await resUsers.json());
-    
-    const resSettings = await fetch("/api/settings");
-    const dataSettings = await resSettings.json();
-    setSectors(dataSettings.sectors);
-    setDevices(dataSettings.devices);
+    try {
+      const resUsers = await fetch("/api/users");
+      setUsers(await resUsers.json());
+      
+      const resSettings = await fetch("/api/settings");
+      const dataSettings = await resSettings.json();
+      setSectors(dataSettings.sectors);
+      setDevices(dataSettings.devices);
+
+      const resSecurity = await fetch("/api/security");
+      if (resSecurity.ok) {
+        const dataSecurity = await resSecurity.json();
+        setIpLimits(dataSecurity.ipLimits || []);
+        setBlockedEmails(dataSecurity.blockedEmails || []);
+        setAlertEmails(dataSecurity.alertEmails || []);
+      }
+    } catch (error) {
+      console.error("Erro ao buscar dados:", error);
+    }
   };
 
   useEffect(() => { fetchData(); }, []);
 
+  // ==========================================
+  // FUNÇÕES: EQUIPE, SETORES E EQUIPAMENTOS
+  // ==========================================
   const handleAddOrEditUser = async (e: React.FormEvent) => {
     e.preventDefault();
     const isEditing = !!editingId;
@@ -144,6 +168,57 @@ export default function GlobalSettings() {
     });
   };
 
+  // ==========================================
+  // FUNÇÕES: SEGURANÇA
+  // ==========================================
+  const handleAddSecurityEmail = async (e: React.FormEvent, action: 'addBlockedEmail' | 'addAlertEmail') => {
+    e.preventDefault();
+    const targetEmail = action === 'addBlockedEmail' ? newBlockedEmail : newAlertEmail;
+    
+    const res = await fetch("/api/security", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, email: targetEmail }),
+    });
+    
+    if (res.ok) {
+      if (action === 'addBlockedEmail') setNewBlockedEmail("");
+      else setNewAlertEmail("");
+      fetchData();
+      showToast("E-mail salvo com sucesso na segurança!", "success");
+    } else {
+      showToast("Erro ao adicionar e-mail.", "error");
+    }
+  };
+
+  const handleSecurityAction = (id: string, action: 'removeBlockedEmail' | 'removeAlertEmail' | 'resetIp') => {
+    const titles = {
+      removeBlockedEmail: "Remover da Blacklist",
+      removeAlertEmail: "Remover Alerta",
+      resetIp: "Resetar IP"
+    };
+    const messages = {
+      removeBlockedEmail: "Deseja remover este e-mail da lista de bloqueados?",
+      removeAlertEmail: "Deseja remover este e-mail da lista de alertas?",
+      resetIp: `Deseja zerar o contador do IP ${id}?`
+    };
+
+    setModal({
+      show: true,
+      title: titles[action],
+      message: messages[action],
+      onConfirm: async () => {
+        const res = await fetch(`/api/security?action=${action}&id=${id}`, { method: "DELETE" });
+        if (res.ok) {
+          fetchData();
+          showToast("Ação concluída com sucesso!", "success");
+        } else {
+          showToast("Erro ao executar ação de segurança.", "error");
+        }
+      }
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 transition-colors px-4 py-6 sm:p-8 relative">
       
@@ -222,180 +297,269 @@ export default function GlobalSettings() {
           >
             💻 Tipos de Equipamentos
           </button>
+          <button
+            onClick={() => {setActiveTab("SECURITY");}}
+            className={`px-5 py-3 font-semibold text-sm border-b-2 transition-all duration-200 ${
+              activeTab === 'SECURITY'
+                ? 'border-red-600 text-red-600 bg-red-50/50'
+                : 'border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            🛡️ Segurança e Alertas
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Formulário */}
-          <div className="lg:col-span-1 bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-slate-800 h-fit">
-            <h2 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-100 pb-3">
-              {activeTab === 'EQUIPE' ? (editingId ? 'Editar Técnico' : 'Novo Técnico') : (editingItemId ? 'Editar Cadastro' : (activeTab === 'SECTORS' ? 'Novo Setor' : 'Novo Equipamento'))}
-            </h2>
-            
-            {activeTab === 'EQUIPE' ? (
-              <form onSubmit={handleAddOrEditUser} className="space-y-4">
-                <input
-                  required
-                  type="text"
-                  placeholder="Nome"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-none transition-all"
-                />
+        {/* =========================================
+            CONTEÚDO DA ABA: SEGURANÇA
+            ========================================= */}
+        {activeTab === 'SECURITY' ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-300">
+            {/* Card: IPs com tentativas */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+              <div className="flex items-center gap-3 mb-4 border-b border-slate-100 pb-3">
+                <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
+                  <span className="text-lg">🛡️</span>
+                </div>
+                <h2 className="text-lg font-bold text-slate-800">IPs Monitorados</h2>
+              </div>
+              {ipLimits.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-8">Nenhum IP com tentativas registradas.</p>
+              ) : (
+                <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
+                  {ipLimits.map((ip: any) => (
+                    <div key={ip.ip} className="flex items-center justify-between bg-slate-50 rounded-xl p-3 border border-slate-100">
+                      <div>
+                        <p className="font-semibold text-slate-700 text-sm">{ip.ip}</p>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                          ip.count > 3 ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
+                        }`}>
+                          {ip.count} tentativas
+                        </span>
+                      </div>
+                      <button onClick={() => handleSecurityAction(ip.ip, 'resetIp')} className="text-blue-600 font-semibold text-sm hover:text-blue-800 transition-colors hover:underline">
+                        Resetar
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Card: E-mails Bloqueados */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+              <div className="flex items-center gap-3 mb-4 border-b border-slate-100 pb-3">
+                <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
+                  <span className="text-lg">🚫</span>
+                </div>
+                <h2 className="text-lg font-bold text-slate-800">Blacklist (E-mails)</h2>
+              </div>
+              <form onSubmit={(e) => handleAddSecurityEmail(e, 'addBlockedEmail')} className="flex gap-2 mb-4">
                 <input
                   required
                   type="email"
-                  placeholder="E-mail"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-none transition-all"
+                  placeholder="Bloquear e-mail..."
+                  value={newBlockedEmail}
+                  onChange={e => setNewBlockedEmail(e.target.value)}
+                  className="flex-1 w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-none transition-all text-sm"
                 />
-                <select
-                  value={role}
-                  onChange={e => setRole(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-none transition-all"
-                >
-                  <option value="FUNCIONARIO">Técnico Padrão</option>
-                  <option value="ADMINISTRADOR">Administrador</option>
-                </select>
-                
-                <div className="flex gap-2 flex-col pt-2">
-                  <button
-                    type="submit"
-                    className="w-full bg-slate-800 text-white px-4 py-3 rounded-xl font-semibold hover:bg-slate-700 transition-all duration-200 shadow-sm hover:shadow-md text-sm"
-                  >
-                    {editingId ? 'Salvar Alterações' : 'Cadastrar Técnico'}
-                  </button>
-                  
-                  {editingId && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={handleResetPassword}
-                        className="w-full bg-amber-50 text-amber-700 border border-amber-200 px-4 py-2.5 rounded-xl font-semibold hover:bg-amber-100 transition-all text-sm"
-                      >
-                        Resetar Senha
-                      </button>
-                      <button
-                        type="button"
-                        onClick={resetUserForm}
-                        className="w-full text-slate-500 font-semibold hover:text-slate-700 hover:underline transition-colors text-sm mt-1"
-                      >
-                        Cancelar Edição
-                      </button>
-                    </>
-                  )}
-                </div>
+                <button type="submit" className="bg-red-600 text-white px-4 py-2.5 rounded-xl font-semibold hover:bg-red-700 transition-all duration-200 shadow-sm hover:shadow-md text-sm whitespace-nowrap">
+                  Bloquear
+                </button>
               </form>
-            ) : (
-              <form onSubmit={(e) => handleAddOrEditItem(e, activeTab === 'SECTORS' ? 'SECTOR' : 'DEVICE')} className="space-y-4">
+              {blockedEmails.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-6">Nenhum e-mail bloqueado.</p>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
+                  {blockedEmails.map((b: any) => (
+                    <div key={b.id} className="flex items-center justify-between bg-slate-50 rounded-xl p-3 border border-slate-100">
+                      <span className="text-slate-700 text-sm font-medium truncate">{b.email}</span>
+                      <button onClick={() => handleSecurityAction(b.id, 'removeBlockedEmail')} className="text-red-500 font-semibold text-sm hover:text-red-700 transition-colors hover:underline ml-2">
+                        Remover
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Card: E-mails de Alerta */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+              <div className="flex items-center gap-3 mb-4 border-b border-slate-100 pb-3">
+                <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+                  <span className="text-lg">🔔</span>
+                </div>
+                <h2 className="text-lg font-bold text-slate-800">Alertas de Spam</h2>
+              </div>
+              <form onSubmit={(e) => handleAddSecurityEmail(e, 'addAlertEmail')} className="flex gap-2 mb-4">
                 <input
                   required
-                  type="text"
-                  placeholder="Digite o nome..."
-                  value={newItemName}
-                  onChange={e => setNewItemName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-none transition-all"
+                  type="email"
+                  placeholder="Adicionar TI..."
+                  value={newAlertEmail}
+                  onChange={e => setNewAlertEmail(e.target.value)}
+                  className="flex-1 w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-none transition-all text-sm"
                 />
-                <div className="flex flex-col gap-2">
-                  <button
-                    type="submit"
-                    className="w-full bg-blue-600 text-white px-4 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-all duration-200 shadow-sm hover:shadow-md text-sm"
-                  >
-                    {editingItemId ? 'Salvar Alterações' : 'Salvar Cadastro'}
-                  </button>
-                  {editingItemId && (
-                    <button
-                      type="button"
-                      onClick={() => {setEditingItemId(null); setNewItemName("");}}
-                      className="w-full text-slate-500 font-semibold hover:text-slate-700 hover:underline transition-colors text-sm mt-1"
-                    >
-                      Cancelar Edição
-                    </button>
-                  )}
-                </div>
+                <button type="submit" className="bg-blue-600 text-white px-4 py-2.5 rounded-xl font-semibold hover:bg-blue-700 transition-all duration-200 shadow-sm hover:shadow-md text-sm whitespace-nowrap">
+                  Adicionar
+                </button>
               </form>
-            )}
+              {alertEmails.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-6">Nenhum e-mail de alerta cadastrado.</p>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
+                  {alertEmails.map((a: any) => (
+                    <div key={a.id} className="flex items-center justify-between bg-slate-50 rounded-xl p-3 border border-slate-100">
+                      <span className="text-slate-700 text-sm font-medium truncate">{a.email}</span>
+                      <button onClick={() => handleSecurityAction(a.id, 'removeAlertEmail')} className="text-red-500 font-semibold text-sm hover:text-red-700 transition-colors hover:underline ml-2">
+                        Remover
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
+        ) : (
+          
+        /* =========================================
+           CONTEÚDO DAS OUTRAS ABAS (EQUIPE/SETORES)
+           ========================================= */
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-300">
+            {/* Formulário */}
+            <div className="lg:col-span-1 bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-slate-800 h-fit">
+              <h2 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-100 pb-3">
+                {activeTab === 'EQUIPE' ? (editingId ? 'Editar Técnico' : 'Novo Técnico') : (editingItemId ? 'Editar Cadastro' : (activeTab === 'SECTORS' ? 'Novo Setor' : 'Novo Equipamento'))}
+              </h2>
+              
+              {activeTab === 'EQUIPE' ? (
+                <form onSubmit={handleAddOrEditUser} className="space-y-4">
+                  <input
+                    required
+                    type="text"
+                    placeholder="Nome"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-none transition-all"
+                  />
+                  <input
+                    required
+                    type="email"
+                    placeholder="E-mail"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-none transition-all"
+                  />
+                  <select
+                    value={role}
+                    onChange={e => setRole(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-none transition-all"
+                  >
+                    <option value="FUNCIONARIO">Técnico Padrão</option>
+                    <option value="ADMINISTRADOR">Administrador</option>
+                  </select>
+                  
+                  <div className="flex gap-2 flex-col pt-2">
+                    <button type="submit" className="w-full bg-slate-800 text-white px-4 py-3 rounded-xl font-semibold hover:bg-slate-700 transition-all duration-200 shadow-sm hover:shadow-md text-sm">
+                      {editingId ? 'Salvar Alterações' : 'Cadastrar Técnico'}
+                    </button>
+                    {editingId && (
+                      <>
+                        <button type="button" onClick={handleResetPassword} className="w-full bg-amber-50 text-amber-700 border border-amber-200 px-4 py-2.5 rounded-xl font-semibold hover:bg-amber-100 transition-all text-sm">
+                          Resetar Senha
+                        </button>
+                        <button type="button" onClick={resetUserForm} className="w-full text-slate-500 font-semibold hover:text-slate-700 hover:underline transition-colors text-sm mt-1">
+                          Cancelar Edição
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </form>
+              ) : (
+                <form onSubmit={(e) => handleAddOrEditItem(e, activeTab === 'SECTORS' ? 'SECTOR' : 'DEVICE')} className="space-y-4">
+                  <input
+                    required
+                    type="text"
+                    placeholder="Digite o nome..."
+                    value={newItemName}
+                    onChange={e => setNewItemName(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-none transition-all"
+                  />
+                  <div className="flex flex-col gap-2">
+                    <button type="submit" className="w-full bg-blue-600 text-white px-4 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-all duration-200 shadow-sm hover:shadow-md text-sm">
+                      {editingItemId ? 'Salvar Alterações' : 'Salvar Cadastro'}
+                    </button>
+                    {editingItemId && (
+                      <button type="button" onClick={() => {setEditingItemId(null); setNewItemName("");}} className="w-full text-slate-500 font-semibold hover:text-slate-700 hover:underline transition-colors text-sm mt-1">
+                        Cancelar Edição
+                      </button>
+                    )}
+                  </div>
+                </form>
+              )}
+            </div>
 
-          {/* Tabela */}
-          <div className="lg:col-span-2 bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200">
-            <h2 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-100 pb-3">Cadastros Ativos</h2>
-            
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-slate-600">
-                  <th className="p-4 font-bold text-sm">Nome</th>
-                  {activeTab === 'EQUIPE' && <th className="p-4 font-bold text-sm">Acesso</th>}
-                  <th className="p-4 font-bold text-center text-sm w-32">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {activeTab === 'EQUIPE' && users.map((u: any) => (
-                  <tr key={u.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                    <td className="p-4 text-slate-800">
-                      <strong className="font-semibold">{u.name}</strong>
-                      <br />
-                      <span className="text-sm text-slate-400">{u.email}</span>
-                    </td>
-                    <td className="p-4">
-                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                        u.role === 'ADMINISTRADOR'
-                          ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                          : 'bg-slate-100 text-slate-600 border border-slate-200'
-                      }`}>
-                        {u.role === 'ADMINISTRADOR' ? 'Admin' : 'Padrão'}
-                      </span>
-                    </td>
-                    <td className="p-4 text-center">
-                      <div className="flex justify-center gap-3">
-                        <button onClick={() => handleEditUser(u)} className="text-blue-600 font-semibold text-sm hover:text-blue-800 transition-colors hover:underline">
-                          Editar
-                        </button>
-                        <button onClick={() => handleDeleteUser(u.id)} className="text-red-500 font-semibold text-sm hover:text-red-700 transition-colors hover:underline">
-                          Excluir
-                        </button>
-                      </div>
-                    </td>
+            {/* Tabela */}
+            <div className="lg:col-span-2 bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200">
+              <h2 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-100 pb-3">Cadastros Ativos</h2>
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-600">
+                    <th className="p-4 font-bold text-sm">Nome</th>
+                    {activeTab === 'EQUIPE' && <th className="p-4 font-bold text-sm">Acesso</th>}
+                    <th className="p-4 font-bold text-center text-sm w-32">Ações</th>
                   </tr>
-                ))}
-                
-                {activeTab === 'SECTORS' && sectors.map((s: any) => (
-                  <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                    <td className="p-4 text-slate-800 font-medium">{s.name}</td>
-                    <td className="p-4 text-center">
-                      <div className="flex justify-center gap-3">
-                        <button onClick={() => handleEditItem(s)} className="text-blue-600 font-semibold text-sm hover:text-blue-800 transition-colors hover:underline">
-                          Editar
-                        </button>
-                        <button onClick={() => handleDeleteItem(s.id, 'SECTOR')} className="text-red-500 font-semibold text-sm hover:text-red-700 transition-colors hover:underline">
-                          Excluir
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                </thead>
+                <tbody>
+                  {activeTab === 'EQUIPE' && users.map((u: any) => (
+                    <tr key={u.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                      <td className="p-4 text-slate-800">
+                        <strong className="font-semibold">{u.name}</strong><br />
+                        <span className="text-sm text-slate-400">{u.email}</span>
+                      </td>
+                      <td className="p-4">
+                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                          u.role === 'ADMINISTRADOR' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-slate-100 text-slate-600 border border-slate-200'
+                        }`}>
+                          {u.role === 'ADMINISTRADOR' ? 'Admin' : 'Padrão'}
+                        </span>
+                      </td>
+                      <td className="p-4 text-center">
+                        <div className="flex justify-center gap-3">
+                          <button onClick={() => handleEditUser(u)} className="text-blue-600 font-semibold text-sm hover:text-blue-800 transition-colors hover:underline">Editar</button>
+                          <button onClick={() => handleDeleteUser(u.id)} className="text-red-500 font-semibold text-sm hover:text-red-700 transition-colors hover:underline">Excluir</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  
+                  {activeTab === 'SECTORS' && sectors.map((s: any) => (
+                    <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                      <td className="p-4 text-slate-800 font-medium">{s.name}</td>
+                      <td className="p-4 text-center">
+                        <div className="flex justify-center gap-3">
+                          <button onClick={() => handleEditItem(s)} className="text-blue-600 font-semibold text-sm hover:text-blue-800 transition-colors hover:underline">Editar</button>
+                          <button onClick={() => handleDeleteItem(s.id, 'SECTOR')} className="text-red-500 font-semibold text-sm hover:text-red-700 transition-colors hover:underline">Excluir</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
 
-                {activeTab === 'DEVICES' && devices.map((d: any) => (
-                  <tr key={d.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                    <td className="p-4 text-slate-800 font-medium">{d.name}</td>
-                    <td className="p-4 text-center">
-                      <div className="flex justify-center gap-3">
-                        <button onClick={() => handleEditItem(d)} className="text-blue-600 font-semibold text-sm hover:text-blue-800 transition-colors hover:underline">
-                          Editar
-                        </button>
-                        <button onClick={() => handleDeleteItem(d.id, 'DEVICE')} className="text-red-500 font-semibold text-sm hover:text-red-700 transition-colors hover:underline">
-                          Excluir
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                  {activeTab === 'DEVICES' && devices.map((d: any) => (
+                    <tr key={d.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                      <td className="p-4 text-slate-800 font-medium">{d.name}</td>
+                      <td className="p-4 text-center">
+                        <div className="flex justify-center gap-3">
+                          <button onClick={() => handleEditItem(d)} className="text-blue-600 font-semibold text-sm hover:text-blue-800 transition-colors hover:underline">Editar</button>
+                          <button onClick={() => handleDeleteItem(d.id, 'DEVICE')} className="text-red-500 font-semibold text-sm hover:text-red-700 transition-colors hover:underline">Excluir</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-
-        </div>
+        )}
       </div>
     </div>
   );

@@ -2,9 +2,6 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { sendNotificationEmail } from "@/lib/mailer";
 
-// 🛡️ SISTEMA DE PROTEÇÃO: "Caderninho" na memória
-const ipRateLimit = new Map<string, { count: number; startTime: number; lastWarning: number }>();
-
 export async function GET() {
   const sectors = await prisma.sector.findMany({ orderBy: { name: 'asc' } });
   const deviceTypes = await prisma.deviceType.findMany({ orderBy: { name: 'asc' } });
@@ -13,86 +10,107 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    // --- 1. LÓGICA DE TEMPO (HORÁRIO DE BRASÍLIA) ---
+    const data = await req.json();
+
+    // --- 1. VERIFICA BLOQUEIO PERMANENTE DE E-MAIL ---
+    if (data.userEmail) {
+      const isBlocked = await prisma.blockedEmail.findUnique({
+        where: { email: data.userEmail }
+      });
+      if (isBlocked) {
+        return NextResponse.json({ error: "Este e-mail foi bloqueado permanentemente pelo administrador." }, { status: 403 });
+      }
+    }
+
+    // --- 2. LÓGICA DE TEMPO (HORÁRIO DE BRASÍLIA) ---
     const now = new Date();
     const brazilTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
     
-    const dayOfWeek = brazilTime.getDay(); // 0 = Domingo, 6 = Sábado
-    const hour = brazilTime.getHours(); // 0 a 23
+    const dayOfWeek = brazilTime.getDay();
+    const hour = brazilTime.getHours();
 
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
     const isBusinessHours = !isWeekend && hour >= 8 && hour < 17;
 
-    // Regras Dinâmicas de Limite
     const MAX_TICKETS = isBusinessHours ? 3 : 1; 
     const TIME_WINDOW_MS = isBusinessHours ? 15 * 60 * 1000 : 24 * 60 * 60 * 1000;
 
-    // --- 2. PROTEÇÃO POR IP ---
+    // --- 3. PROTEÇÃO POR IP (AGORA NO BANCO DE DADOS) ---
     const ip = req.headers.get("x-forwarded-for")?.split(',')[0] || req.headers.get("x-real-ip") || "ip-desconhecido";
-    const ipRecord = ipRateLimit.get(ip) || { count: 0, startTime: now.getTime(), lastWarning: 0 };
     
-    if (now.getTime() - ipRecord.startTime > TIME_WINDOW_MS) {
-      ipRecord.count = 0;
-      ipRecord.startTime = now.getTime();
+    // Busca ou cria o registro do IP no banco
+    let ipRecord = await prisma.ipRateLimit.upsert({
+      where: { ip },
+      update: {},
+      create: { ip, count: 0, startTime: now }
+    });
+    
+    // Zera a contagem se a janela de tempo já passou
+    if (now.getTime() - ipRecord.startTime.getTime() > TIME_WINDOW_MS) {
+      ipRecord = await prisma.ipRateLimit.update({
+        where: { ip },
+        data: { count: 0, startTime: now }
+      });
     }
 
     // Soma +1 tentativa logo de cara
-    ipRecord.count += 1;
-    ipRateLimit.set(ip, ipRecord);
+    ipRecord = await prisma.ipRateLimit.update({
+      where: { ip },
+      data: { count: ipRecord.count + 1 }
+    });
 
     // FUNÇÃO AUXILIAR: Bloqueia e Notifica a TI
     const handleRateLimitExceeded = async (blockType: string, identifier: string) => {
-      console.log(`[PROTEÇÃO] Bloqueio ativado por ${blockType} (${identifier}). IP: ${ip}`);
-      
-      // Trava de 1 hora recolocada para não lotar sua caixa de entrada
-      if (now.getTime() - ipRecord.lastWarning > 60 * 60 * 1000) {
+      const lastWarningTime = ipRecord.lastWarning ? ipRecord.lastWarning.getTime() : 0;
+
+      // Dispara o alerta no máximo 1x por hora
+      if (now.getTime() - lastWarningTime > 60 * 60 * 1000) {
         try {
-          await sendNotificationEmail(
-            "chicolima1996@gmail.com", // 🔴 SEU E-MAIL
-            `⚠️ ALERTA: Spam bloqueado (${blockType})`,
-            `<p>O sistema de proteção bloqueou a abertura de chamados.</p>
-             <p><b>Gatilho:</b> Limite atingido por ${blockType} (${identifier}).</p>
-             <p><b>Contexto:</b> ${isBusinessHours ? 'Horário Comercial' : 'Fora do Horário/Fim de semana'}</p>
-             <p><b>Regra Ativa:</b> Bloqueado após ${MAX_TICKETS} tentativa(s).</p>`
-          );
-          ipRecord.lastWarning = now.getTime();
-          ipRateLimit.set(ip, ipRecord);
-          console.log("[PROTEÇÃO] E-mail enviado para TI.");
+          const alertEmails = await prisma.alertEmail.findMany();
+          
+          // Envia o e-mail para toda a equipe cadastrada no painel
+          for (const admin of alertEmails) {
+            await sendNotificationEmail(
+              admin.email,
+              `⚠️ ALERTA: Spam bloqueado (${blockType})`,
+              `<p>O sistema de proteção bloqueou a abertura de chamados.</p>
+               <p><b>Gatilho:</b> Limite atingido por ${blockType} (${identifier}).</p>
+               <p><b>IP de Origem:</b> ${ip}</p>
+               <p><b>Contexto:</b> ${isBusinessHours ? 'Horário Comercial' : 'Fora do Horário/Fim de semana'}</p>
+               <p><b>Regra Ativa:</b> Bloqueado após ${MAX_TICKETS} tentativa(s).</p>`
+            );
+          }
+          
+          await prisma.ipRateLimit.update({
+            where: { ip },
+            data: { lastWarning: now }
+          });
         } catch (error) {
-          console.error("[PROTEÇÃO] Erro no e-mail:", error);
+          console.error("[PROTEÇÃO] Erro ao enviar e-mails de alerta:", error);
         }
       }
 
-      if (isWeekend) {
-        return "Fim de semana detectado. Nosso limite é de apenas 1 chamado por dia. Tente novamente no próximo dia útil.";
-      } else if (!isBusinessHours) {
-        return "Fora do horário comercial (08h às 17h), permitimos apenas 1 chamado por dia. Tente novamente a partir das 08h.";
-      } else {
-        return "Muitas solicitações deste computador. Por favor, aguarde 15 minutos.";
-      }
+      if (isWeekend) return "Fim de semana detectado. Nosso limite é de apenas 1 chamado por dia. Tente novamente no próximo dia útil.";
+      if (!isBusinessHours) return "Fora do horário comercial (08h às 17h), permitimos apenas 1 chamado por dia. Tente novamente a partir das 08h.";
+      return "Muitas solicitações deste computador. Por favor, aguarde 15 minutos.";
     };
 
-    // Verifica IP
+    // Verifica limite de IP
     if (ipRecord.count > MAX_TICKETS) {
       const errorMsg = await handleRateLimitExceeded("IP", ip);
       return NextResponse.json({ error: errorMsg }, { status: 429 });
     }
 
-    const data = await req.json();
-    
-    // --- 3. PROTEÇÃO EXTRA POR E-MAIL NO PRISMA ---
+    // --- 4. PROTEÇÃO EXTRA POR E-MAIL NO PRISMA (TEMPORÁRIA) ---
     const windowStartDate = new Date(now.getTime() - TIME_WINDOW_MS);
 
     if (data.type === 'EXTERNAL') {
       const recentTickets = await prisma.externalService.count({
-        where: {
-          userEmail: data.userEmail,
-          createdAt: { gte: windowStartDate }
-        }
+        where: { userEmail: data.userEmail, createdAt: { gte: windowStartDate } }
       });
 
       if (recentTickets >= MAX_TICKETS) {
-        const errorMsg = await handleRateLimitExceeded("E-mail", data.userEmail);
+        const errorMsg = await handleRateLimitExceeded("E-mail Múltiplo", data.userEmail);
         return NextResponse.json({ error: errorMsg }, { status: 429 });
       }
 
@@ -117,14 +135,11 @@ export async function POST(req: Request) {
       
     } else {
       const recentMaintenances = await prisma.internalMaintenance.count({
-        where: {
-          userEmail: data.userEmail,
-          receiveDate: { gte: windowStartDate }
-        }
+        where: { userEmail: data.userEmail, receiveDate: { gte: windowStartDate } }
       });
 
       if (recentMaintenances >= MAX_TICKETS) {
-        const errorMsg = await handleRateLimitExceeded("E-mail", data.userEmail);
+        const errorMsg = await handleRateLimitExceeded("E-mail Múltiplo", data.userEmail);
         return NextResponse.json({ error: errorMsg }, { status: 429 });
       }
 

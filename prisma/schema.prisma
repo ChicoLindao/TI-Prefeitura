@@ -178,3 +178,27 @@ model RemoteAccess {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 }
+
+// --- SISTEMA DE SEGURANÇA E ALERTAS ---
+
+// Substitui o "Map" na memória para podermos controlar os IPs pelo Painel
+model IpRateLimit {
+  ip          String    @id
+  count       Int       @default(0)
+  startTime   DateTime  @default(now())
+  lastWarning DateTime?
+}
+
+// Lista de e-mails bloqueados permanentemente
+model BlockedEmail {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
+
+// Lista de e-mails da TI que vão receber os avisos de spam
+model AlertEmail {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
