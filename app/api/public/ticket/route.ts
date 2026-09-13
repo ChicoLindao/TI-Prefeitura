@@ -35,67 +35,48 @@ export async function POST(req: Request) {
     const MAX_TICKETS = isBusinessHours ? 3 : 1; 
     const TIME_WINDOW_MS = isBusinessHours ? 15 * 60 * 1000 : 24 * 60 * 60 * 1000;
 
-    // --- 3. PROTEÇÃO POR IP (AGORA NO BANCO DE DADOS) ---
-    
-    // Vasculha todos os cabeçalhos possíveis
+    // --- 3. PROTEÇÃO POR IP (COM WHITELIST DO FIREWALL) ---
     const cfIp = req.headers.get("cf-connecting-ip");
     const forwardedIp = req.headers.get("x-forwarded-for");
     const realIp = req.headers.get("x-real-ip");
 
-    // Imprime no terminal do servidor para sabermos quem está mentindo
-    console.log(`[DEBUG DE IP] Cloudflare: ${cfIp} | Forwarded: ${forwardedIp} | Real: ${realIp}`);
-
-    // Pega o IP mais confiável na hierarquia
     let rawIp = cfIp || (forwardedIp ? forwardedIp.split(',')[0].trim() : null) || realIp || "ip-desconhecido";
-    
-    // Limpa a sujeira do IPv6 mascarado
     const ip = rawIp.replace("::ffff:", "");
-    
-    // Busca ou cria o registro do IP no banco
-    let ipRecord = await prisma.ipRateLimit.upsert({
-      where: { ip },
-      update: {},
-      create: { ip, count: 0, startTime: now }
-    });
-    
-    // Zera a contagem se a janela de tempo já passou
-    if (now.getTime() - ipRecord.startTime.getTime() > TIME_WINDOW_MS) {
-      ipRecord = await prisma.ipRateLimit.update({
-        where: { ip },
-        data: { count: 0, startTime: now }
-      });
-    }
 
-    // Soma +1 tentativa logo de cara
-    ipRecord = await prisma.ipRateLimit.update({
-      where: { ip },
-      data: { count: ipRecord.count + 1 }
-    });
+    // 🔴 LISTA DE IPs IGNORADOS (Firewall da Prefeitura e Localhost)
+    const WHITELISTED_IPS = ["192.168.0.254", "127.0.0.1", "::1"];
+    const isIpWhitelisted = WHITELISTED_IPS.includes(ip);
 
     // FUNÇÃO AUXILIAR: Bloqueia e Notifica a TI
-    const handleRateLimitExceeded = async (blockType: string, identifier: string) => {
-      const lastWarningTime = ipRecord.lastWarning ? ipRecord.lastWarning.getTime() : 0;
+    const handleRateLimitExceeded = async (blockType: string, identifier: string, triggerIp: string) => {
+      
+      // Cria um registro temporário só para controlar o tempo de reenvio do e-mail de alerta (1x por hora)
+      const throttleKey = isIpWhitelisted ? `alerta_email_${identifier}` : triggerIp;
+      
+      let alertRecord = await prisma.ipRateLimit.upsert({
+        where: { ip: throttleKey },
+        update: {},
+        create: { ip: throttleKey, count: 0, startTime: now }
+      });
 
-      // Dispara o alerta no máximo 1x por hora
+      const lastWarningTime = alertRecord.lastWarning ? alertRecord.lastWarning.getTime() : 0;
+
       if (now.getTime() - lastWarningTime > 60 * 60 * 1000) {
         try {
           const alertEmails = await prisma.alertEmail.findMany();
-          
-          // Envia o e-mail para toda a equipe cadastrada no painel
           for (const admin of alertEmails) {
             await sendNotificationEmail(
               admin.email,
               `⚠️ ALERTA: Spam bloqueado (${blockType})`,
               `<p>O sistema de proteção bloqueou a abertura de chamados.</p>
                <p><b>Gatilho:</b> Limite atingido por ${blockType} (${identifier}).</p>
-               <p><b>IP de Origem:</b> ${ip}</p>
+               <p><b>IP de Origem:</b> ${triggerIp} ${isIpWhitelisted ? '(Ignorado pela Whitelist)' : ''}</p>
                <p><b>Contexto:</b> ${isBusinessHours ? 'Horário Comercial' : 'Fora do Horário/Fim de semana'}</p>
                <p><b>Regra Ativa:</b> Bloqueado após ${MAX_TICKETS} tentativa(s).</p>`
             );
           }
-          
           await prisma.ipRateLimit.update({
-            where: { ip },
+            where: { ip: throttleKey },
             data: { lastWarning: now }
           });
         } catch (error) {
@@ -105,16 +86,36 @@ export async function POST(req: Request) {
 
       if (isWeekend) return "Fim de semana detectado. Nosso limite é de apenas 1 chamado por dia. Tente novamente no próximo dia útil.";
       if (!isBusinessHours) return "Fora do horário comercial (08h às 17h), permitimos apenas 1 chamado por dia. Tente novamente a partir das 08h.";
-      return "Muitas solicitações deste computador. Por favor, aguarde 15 minutos.";
+      return `Muitas solicitações registradas. Por favor, aguarde ${isBusinessHours ? '15 minutos' : 'algumas horas'}.`;
     };
 
-    // Verifica limite de IP
-    if (ipRecord.count > MAX_TICKETS) {
-      const errorMsg = await handleRateLimitExceeded("IP", ip);
-      return NextResponse.json({ error: errorMsg }, { status: 429 });
+    // Só aplica a trava de IP se ele NÃO estiver na Whitelist
+    if (!isIpWhitelisted) {
+      let ipRecord = await prisma.ipRateLimit.upsert({
+        where: { ip },
+        update: {},
+        create: { ip, count: 0, startTime: now }
+      });
+      
+      if (now.getTime() - ipRecord.startTime.getTime() > TIME_WINDOW_MS) {
+        ipRecord = await prisma.ipRateLimit.update({
+          where: { ip },
+          data: { count: 0, startTime: now }
+        });
+      }
+
+      ipRecord = await prisma.ipRateLimit.update({
+        where: { ip },
+        data: { count: ipRecord.count + 1 }
+      });
+
+      if (ipRecord.count > MAX_TICKETS) {
+        const errorMsg = await handleRateLimitExceeded("IP", ip, ip);
+        return NextResponse.json({ error: errorMsg }, { status: 429 });
+      }
     }
 
-    // --- 4. PROTEÇÃO EXTRA POR E-MAIL NO PRISMA (TEMPORÁRIA) ---
+    // --- 4. PROTEÇÃO EXTRA POR E-MAIL NO PRISMA ---
     const windowStartDate = new Date(now.getTime() - TIME_WINDOW_MS);
 
     if (data.type === 'EXTERNAL') {
@@ -123,7 +124,7 @@ export async function POST(req: Request) {
       });
 
       if (recentTickets >= MAX_TICKETS) {
-        const errorMsg = await handleRateLimitExceeded("E-mail Múltiplo", data.userEmail);
+        const errorMsg = await handleRateLimitExceeded("E-mail Múltiplo", data.userEmail, ip);
         return NextResponse.json({ error: errorMsg }, { status: 429 });
       }
 
@@ -152,7 +153,7 @@ export async function POST(req: Request) {
       });
 
       if (recentMaintenances >= MAX_TICKETS) {
-        const errorMsg = await handleRateLimitExceeded("E-mail Múltiplo", data.userEmail);
+        const errorMsg = await handleRateLimitExceeded("E-mail Múltiplo", data.userEmail, ip);
         return NextResponse.json({ error: errorMsg }, { status: 429 });
       }
 
