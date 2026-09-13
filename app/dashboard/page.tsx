@@ -220,8 +220,8 @@ export default async function DashboardPage() {
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
                     <th className="p-4 font-bold text-slate-600">Técnicos</th>
-                    <th className="p-4 font-bold text-slate-600 text-center">Externos em Aberto</th>
-                    <th className="p-4 font-bold text-slate-600 text-center">Setor em Aberto</th>
+                    <th className="p-4 font-bold text-slate-600 text-center">Chamados em Aberto</th>
+                    <th className="p-4 font-bold text-slate-600 text-center">Equipamentos no Setor em Aberto</th>
                     <th className="p-4 font-bold text-slate-600 text-center">Total Finalizados</th>
                     <th className="p-4 font-bold text-slate-600 text-center">Ações</th>
                   </tr>
