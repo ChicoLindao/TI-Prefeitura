@@ -194,6 +194,9 @@ model BlockedEmail {
   id        String   @id @default(uuid())
   email     String   @unique
   createdAt DateTime @default(now())
+
+  isTemporary Boolean   @default(false)
+  expiresAt   DateTime?
 }
 
 // Lista de e-mails da TI que vão receber os avisos de spam

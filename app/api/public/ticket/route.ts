@@ -12,17 +12,6 @@ export async function POST(req: Request) {
   try {
     const data = await req.json();
 
-    // --- 1. VERIFICA BLOQUEIO PERMANENTE DE E-MAIL ---
-    if (data.userEmail) {
-      const isBlocked = await prisma.blockedEmail.findUnique({
-        where: { email: data.userEmail }
-      });
-      if (isBlocked) {
-        return NextResponse.json({ error: "Este e-mail foi bloqueado permanentemente pelo administrador." }, { status: 403 });
-      }
-    }
-
-    // --- 2. LÓGICA DE TEMPO (HORÁRIO DE BRASÍLIA) ---
     const now = new Date();
     const brazilTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
     
@@ -35,7 +24,25 @@ export async function POST(req: Request) {
     const MAX_TICKETS = isBusinessHours ? 3 : 1; 
     const TIME_WINDOW_MS = isBusinessHours ? 15 * 60 * 1000 : 24 * 60 * 60 * 1000;
 
-    // --- 3. PROTEÇÃO POR IP (COM WHITELIST DO FIREWALL) ---
+    // --- 1. VERIFICA BLOQUEIO NA LISTA CENTRAL (PERMANENTE E TEMPORÁRIO) ---
+    if (data.userEmail) {
+      const blockRecord = await prisma.blockedEmail.findUnique({
+        where: { email: data.userEmail }
+      });
+      
+      if (blockRecord) {
+        // Se for temporário e o cronômetro já zerou, apaga do banco e deixa passar!
+        if (blockRecord.isTemporary && blockRecord.expiresAt && blockRecord.expiresAt < now) {
+          await prisma.blockedEmail.delete({ where: { email: data.userEmail } });
+        } else {
+          // Continua bloqueado (rejeita a conexão)
+          const tipo = blockRecord.isTemporary ? "temporariamente por limite de chamados" : "permanentemente pelo administrador";
+          return NextResponse.json({ error: `Este e-mail está bloqueado ${tipo}.` }, { status: 403 });
+        }
+      }
+    }
+
+    // --- 2. PROTEÇÃO POR IP (COM WHITELIST DO FIREWALL) ---
     const cfIp = req.headers.get("cf-connecting-ip");
     const forwardedIp = req.headers.get("x-forwarded-for");
     const realIp = req.headers.get("x-real-ip");
@@ -43,16 +50,23 @@ export async function POST(req: Request) {
     let rawIp = cfIp || (forwardedIp ? forwardedIp.split(',')[0].trim() : null) || realIp || "ip-desconhecido";
     const ip = rawIp.replace("::ffff:", "");
 
-    // 🔴 LISTA DE IPs IGNORADOS (Firewall da Prefeitura e Localhost)
     const WHITELISTED_IPS = ["192.168.0.254", "127.0.0.1", "::1"];
     const isIpWhitelisted = WHITELISTED_IPS.includes(ip);
 
-    // FUNÇÃO AUXILIAR: Bloqueia e Notifica a TI
+    // FUNÇÃO AUXILIAR: Bloqueia, Notifica e ADICIONA NA LISTA DA UI
     const handleRateLimitExceeded = async (blockType: string, identifier: string, triggerIp: string) => {
       
-      // Cria um registro temporário só para controlar o tempo de reenvio do e-mail de alerta (1x por hora)
+      // Joga o e-mail na lista da interface para a TI ver e conseguir excluir!
+      if (blockType === "E-mail Múltiplo") {
+        const expirationDate = new Date(now.getTime() + TIME_WINDOW_MS);
+        await prisma.blockedEmail.upsert({
+          where: { email: identifier },
+          update: { isTemporary: true, expiresAt: expirationDate },
+          create: { email: identifier, isTemporary: true, expiresAt: expirationDate }
+        });
+      }
+
       const throttleKey = isIpWhitelisted ? `alerta_email_${identifier}` : triggerIp;
-      
       let alertRecord = await prisma.ipRateLimit.upsert({
         where: { ip: throttleKey },
         update: {},
@@ -68,11 +82,9 @@ export async function POST(req: Request) {
             await sendNotificationEmail(
               admin.email,
               `⚠️ ALERTA: Spam bloqueado (${blockType})`,
-              `<p>O sistema de proteção bloqueou a abertura de chamados.</p>
-               <p><b>Gatilho:</b> Limite atingido por ${blockType} (${identifier}).</p>
-               <p><b>IP de Origem:</b> ${triggerIp} ${isIpWhitelisted ? '(Ignorado pela Whitelist)' : ''}</p>
-               <p><b>Contexto:</b> ${isBusinessHours ? 'Horário Comercial' : 'Fora do Horário/Fim de semana'}</p>
-               <p><b>Regra Ativa:</b> Bloqueado após ${MAX_TICKETS} tentativa(s).</p>`
+              `<p>O sistema bloqueou a abertura de chamados.</p>
+               <p><b>Gatilho:</b> ${blockType} (${identifier}).</p>
+               <p><b>IP de Origem:</b> ${triggerIp} ${isIpWhitelisted ? '(Ignorado pela Whitelist)' : ''}</p>`
             );
           }
           await prisma.ipRateLimit.update({
@@ -80,16 +92,16 @@ export async function POST(req: Request) {
             data: { lastWarning: now }
           });
         } catch (error) {
-          console.error("[PROTEÇÃO] Erro ao enviar e-mails de alerta:", error);
+          console.error("[PROTEÇÃO] Erro ao enviar alerta:", error);
         }
       }
 
-      if (isWeekend) return "Fim de semana detectado. Nosso limite é de apenas 1 chamado por dia. Tente novamente no próximo dia útil.";
-      if (!isBusinessHours) return "Fora do horário comercial (08h às 17h), permitimos apenas 1 chamado por dia. Tente novamente a partir das 08h.";
-      return `Muitas solicitações registradas. Por favor, aguarde ${isBusinessHours ? '15 minutos' : 'algumas horas'}.`;
+      if (isWeekend) return "Fim de semana detectado. Limite de 1 chamado por dia. Tente amanhã.";
+      if (!isBusinessHours) return "Fora do horário comercial. Limite de 1 chamado. Tente a partir das 08h.";
+      return `Muitas solicitações. Aguarde 15 minutos.`;
     };
 
-    // Só aplica a trava de IP se ele NÃO estiver na Whitelist
+    // --- 3. APLICA A TRAVA DE IP ---
     if (!isIpWhitelisted) {
       let ipRecord = await prisma.ipRateLimit.upsert({
         where: { ip },
@@ -115,7 +127,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // --- 4. PROTEÇÃO EXTRA POR E-MAIL NO PRISMA ---
+    // --- 4. CONTA OS CHAMADOS NO BANCO PARA APLICAR A TRAVA DE E-MAIL ---
     const windowStartDate = new Date(now.getTime() - TIME_WINDOW_MS);
 
     if (data.type === 'EXTERNAL') {
@@ -138,12 +150,6 @@ export async function POST(req: Request) {
         },
         include: { sector: true }
       });
-      
-      await sendNotificationEmail(
-        data.userEmail, 
-        "Demanda Registrada - Setor de Informática", 
-        `<p>Olá, <b>${data.personAttended}</b>.</p><p>Recebemos sua solicitação de atendimento para o setor <b>${newTicket.sector.name}</b>.</p><p><b>Problema relatado:</b> ${data.description}</p><p>Em breve nossa equipe iniciará o atendimento.</p>`
-      );
       
       return NextResponse.json({ message: "Chamado aberto!" }, { status: 201 });
       
@@ -169,12 +175,6 @@ export async function POST(req: Request) {
         },
         include: { originSector: true, deviceType: true }
       });
-      
-      await sendNotificationEmail(
-        data.userEmail, 
-        "Equipamento Recebido - Setor de Informática", 
-        `<p>Olá, <b>${data.personAttended}</b>.</p><p>Registramos a entrada do seu equipamento (${newMaintenance.deviceType.name}) vindo do setor <b>${newMaintenance.originSector.name}</b>.</p><p><b>Defeito:</b> ${data.description}</p><p>Avisaremos neste e-mail assim que ele estiver pronto para retirada.</p>`
-      );
 
       return NextResponse.json({ message: "Equipamento registrado!" }, { status: 201 });
     }
