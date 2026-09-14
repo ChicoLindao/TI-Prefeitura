@@ -14,7 +14,7 @@ export default async function OrderOfServicePrint({ params }: { params: Promise<
       techs: { select: { name: true } },
       logs: { 
         include: { tech: { select: { name: true } } }, 
-        orderBy: { createdAt: "asc" } 
+        orderBy: { createdAt: "desc" } // Alterado para 'desc' para ver o mais recente no topo
       },
     }
   });
@@ -59,15 +59,18 @@ export default async function OrderOfServicePrint({ params }: { params: Promise<
         </div>
 
         <div>
-          <h3 className="text-lg font-bold text-slate-800 border-b-2 border-slate-300 mb-3 pb-1">Serviço Executado (Diagnóstico)</h3>
+          <h3 className="text-lg font-bold text-slate-800 border-b-2 border-slate-300 mb-3 pb-1">Serviço Executado (Histórico)</h3>
           {maintenance.logs.length > 0 ? (
-            <ol className="list-decimal pl-6 space-y-2">
-              {maintenance.logs.map((log: any) => (
-                <li key={log.id} className="text-sm text-slate-700 leading-relaxed">
-                  {log.action} <span className="text-xs text-slate-400">({log.tech?.name || 'Sistema'} - {new Date(log.createdAt).toLocaleDateString('pt-BR')})</span>
-                </li>
+            <div className="border border-slate-300 rounded-lg bg-slate-50 print:bg-transparent flex flex-col">
+              {maintenance.logs.map((log: any, index: number) => (
+                <div key={log.id} className={`p-3 ${index !== maintenance.logs.length - 1 ? 'border-b border-slate-300' : ''}`}>
+                  <p className="text-sm text-slate-800 font-medium mb-1">{log.action}</p>
+                  <p className="text-xs text-slate-500">
+                    {new Date(log.createdAt).toLocaleString('pt-BR')} • Por: {log.tech?.name || 'Sistema'}
+                  </p>
+                </div>
               ))}
-            </ol>
+            </div>
           ) : (
             <p className="text-sm text-slate-400 italic">Nenhum log registrado para este serviço.</p>
           )}
