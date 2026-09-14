@@ -9,7 +9,11 @@ export async function GET() {
       include: { sector: true, techs: { select: { id: true, name: true } } },
       orderBy: { createdAt: 'desc' }
     });
-    const sectors = await prisma.sector.findMany({ orderBy: { name: 'asc' } });
+    // Filtrando apenas os que não possuem "(Inativo)" no nome:
+    const sectors = await prisma.sector.findMany({
+      where: { NOT: { name: { contains: "(Inativo)" } } },
+      orderBy: { name: 'asc' }
+    });
     return NextResponse.json({ services, sectors });
   } catch (error) {
     return NextResponse.json({ error: "Erro ao buscar atendimentos" }, { status: 500 });

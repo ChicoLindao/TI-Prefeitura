@@ -14,33 +14,33 @@ export default function NovoChamado() {
   
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  // NOVO: Estado para guardar e mostrar mensagens de erro bonitas
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    fetch("/api/public/ticket")
+    // 🔥 CORRIGIDO: Agora puxa os setores da rota blindada (que filtra os inativos)
+    fetch("/api/request-service")
       .then(res => res.json())
       .then(data => {
-        setSectors(data.sectors);
+        setSectors(data); // A rota retorna a lista direta, sem o ".sectors"
       });
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setErrorMessage(""); // Limpa o erro anterior antes de tentar de novo
+    setErrorMessage(""); 
     
     try {
-      const res = await fetch("/api/public/ticket", {
+      // 🔥 CORRIGIDO: Agora envia os dados para a rota que tem E-mail e Anti-Spam
+      const res = await fetch("/api/request-service", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "EXTERNAL", sectorId, personAttended, userEmail, description })
+        body: JSON.stringify({ sectorId, personAttended, userEmail, description })
       });
       
       if (res.ok) {
         setSuccess(true);
       } else {
-        // Captura o erro exato que mandamos lá da API
         const data = await res.json();
         setErrorMessage(data.error || "Ocorreu um erro ao enviar a solicitação. Tente novamente.");
       }
@@ -112,7 +112,6 @@ export default function NovoChamado() {
             <span>Preencha os dados abaixo para solicitar um atendimento no seu setor.</span>
           </div>
 
-          {/* NOVO: BANNER DE ERRO ELEGANTE */}
           {errorMessage && (
             <div className="bg-red-50 text-red-700 p-4 rounded-xl text-sm border border-red-200 flex items-start gap-3 animate-pulse">
               <span className="text-base leading-relaxed">⚠️</span>
