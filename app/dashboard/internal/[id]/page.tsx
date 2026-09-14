@@ -114,7 +114,6 @@ export default function InternalMaintenanceDetails({ params }: { params: Promise
 
   if (!data) return <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 p-8 text-slate-500">Carregando...</div>;
   
-  // O filtro foi removido para os status voltarem a aparecer na timeline
   const filteredLogs = data.logs;
 
   return (
@@ -238,17 +237,18 @@ export default function InternalMaintenanceDetails({ params }: { params: Promise
           </div>
         </div>
 
-        {/* Timeline / History */}
+        {/* Timeline / History (CORRIGIDO PARA IMPRESSÃO) */}
         <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 print:shadow-none print:border print:border-gray-300 print:p-3">
-          <h3 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-100 pb-3 print:text-sm print:text-black print:border-gray-400 print:mb-2">Histórico de Atividades</h3>
+          <h3 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-100 pb-3 print:text-sm print:text-black print:border-gray-400 print:mb-0">Histórico de Atividades</h3>
           {filteredLogs.length === 0 ? (
             <p className="text-sm text-slate-400 italic py-4">Nenhuma atividade registrada ainda.</p>
           ) : (
-            <div className="relative print:space-y-1">
+            <div className="relative">
               <div className="absolute left-[7px] top-2 bottom-2 w-px bg-slate-200 print:hidden" />
-              <div className="space-y-5 print:space-y-1">
-                {filteredLogs.map((log: any) => (
-                  <div key={log.id} className="relative pl-8 print:pl-0 print:border-l-2 print:border-gray-400 print:border-b print:pb-2">
+              <div className="space-y-5 print:space-y-0">
+                {filteredLogs.map((log: any, index: number) => (
+                  // 🔥 A MÁGICA ACONTECE AQUI: print:py-3 e a lógica da borda!
+                  <div key={log.id} className={`relative pl-8 print:pl-0 print:py-3 ${index !== filteredLogs.length - 1 ? 'print:border-b print:border-gray-300' : ''}`}>
                     <div className="absolute left-[3px] top-1.5 w-3 h-3 rounded-full bg-blue-500 ring-4 ring-blue-50 print:hidden" />
                     
                     <div className="bg-slate-50 border border-slate-100 p-4 rounded-xl print:bg-transparent print:border-none print:p-0 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
