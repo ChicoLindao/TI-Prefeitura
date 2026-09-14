@@ -52,22 +52,54 @@ export async function PUT(req: Request) {
 export async function DELETE(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-    const loggedInUserId = (session?.user as any)?.id;
+    const currentUser = session?.user as any;
+
+    if (currentUser?.role !== "ADMINISTRADOR") {
+      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+    }
+
+    // 1. EXTRAÇÃO CORRETA: Lendo parâmetros da URL, sem exigir req.json()
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 
-    if (id === loggedInUserId) {
-      return NextResponse.json({ error: "Você não pode apagar a si mesmo!" }, { status: 400 });
+    if (!id) {
+      return NextResponse.json({ error: "ID do usuário não fornecido." }, { status: 400 });
     }
-    
-    // Como a relação com os chamados é N:N, o Prisma permite deletar o usuário.
-    // Ele vai apenas remover este usuário das listas de técnicos dos chamados, 
-    // mas não vai apagar os chamados em si.
-    await prisma.user.delete({ where: { id: id! } });
-    
-    return NextResponse.json({ message: "Removido!" }, { status: 200 });
+
+    // Evita o suicídio digital do Admin
+    if (id === currentUser.id) {
+      return NextResponse.json({ error: "Operação bloqueada: Impossível excluir a própria conta." }, { status: 400 });
+    }
+
+    // 2. LÓGICA DE EXCLUSÃO COM PRESERVAÇÃO RELACIONAL (Graceful Fallback)
+    try {
+      // Tenta fazer o Hard Delete (apagar de fato do banco)
+      await prisma.user.delete({ where: { id } });
+      return NextResponse.json({ success: true, message: "Usuário removido definitivamente do sistema." });
+      
+    } catch (dbError: any) {
+      // P2003 = Erro de Foreign Key Constraint no Prisma. Significa que o usuário tem histórico vinculado.
+      if (dbError.code === 'P2003') {
+        const userToInactivate = await prisma.user.findUnique({ where: { id } });
+        
+        if (userToInactivate && !userToInactivate.name.includes("(Inativo)")) {
+          // Faz o Soft Delete: Mantém no banco mas inativa o nome
+          await prisma.user.update({
+            where: { id },
+            data: { name: `${userToInactivate.name} (Inativo)` }
+          });
+          return NextResponse.json({ success: true, message: "Usuário inativado para preservação do histórico de chamados." });
+        }
+        
+        return NextResponse.json({ success: true, message: "Usuário já se encontra inativo no sistema." });
+      }
+      
+      // Se não for um erro de relacionamento, joga pro catch principal
+      throw dbError; 
+    }
+
   } catch (error) {
-    console.error("ERRO AO EXCLUIR USUÁRIO:", error);
-    return NextResponse.json({ error: "Erro ao remover" }, { status: 500 });
+    console.error("❌ [API USERS] Falha crítica ao processar DELETE:", error);
+    return NextResponse.json({ error: "Erro interno no servidor." }, { status: 500 });
   }
 }
