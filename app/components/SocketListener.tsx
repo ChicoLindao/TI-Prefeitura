@@ -8,14 +8,18 @@ export default function SocketListener() {
   const router = useRouter();
 
   useEffect(() => {
-    // Conecta no servidor WebSocket
+    // 1. Pede permissão para enviar notificações no navegador assim que o técnico entra no sistema
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+
     const socket = io({ path: '/api/socket' });
 
     socket.on('nova-demanda', (payload) => {
       console.log("🚨 Notificação recebida em tempo real!", payload);
       setNotification(payload);
 
-      // Manda o Next.js recarregar as listas do banco de dados na hora, sem dar F5!
+      // Recarrega as listas do banco de dados na hora
       router.refresh();
 
       // Toca o aviso sonoro
@@ -24,7 +28,22 @@ export default function SocketListener() {
         audio.play().catch(e => console.log("Áudio bloqueado pelo navegador até o usuário interagir."));
       } catch (e) {}
 
-      // Oculta o pop-up após 6 segundos
+      // Lógica para saber se é um chamado novo ou apenas uma atualização
+      const isUpdate = ["Status Atualizado", "Novo Histórico", "Técnico Atribuído", "Chamado Excluído", "OS Excluída", "Atualização"].includes(payload.setor);
+      const tituloNotificacao = isUpdate ? "Atualização no Sistema TI" : "NOVA DEMANDA TI!";
+      const corpoNotificacao = isUpdate 
+        ? `${payload.tipo === 'CHAMADO' ? 'Chamado' : 'Equipamento'} - ${payload.setor}`
+        : `Novo(a) ${payload.tipo === 'CHAMADO' ? 'chamado' : 'equipamento'} do setor: ${payload.setor}`;
+
+      // 2. Dispara a notificação nativa do Windows/Navegador (se o técnico tiver permitido)
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification(tituloNotificacao, {
+          body: corpoNotificacao,
+          icon: "/favicon.ico", // Puxa o ícone padrão do seu site
+        });
+      }
+
+      // Oculta o pop-up azul interno após 6 segundos
       setTimeout(() => setNotification(null), 6000);
     });
 
@@ -33,7 +52,6 @@ export default function SocketListener() {
 
   if (!notification) return null;
 
-  // Lógica inteligente para saber se é um chamado novo ou apenas uma atualização
   const isUpdate = ["Status Atualizado", "Novo Histórico", "Técnico Atribuído", "Chamado Excluído", "OS Excluída", "Atualização"].includes(notification.setor);
   const tituloPopUp = isUpdate ? "ATUALIZAÇÃO!" : "NOVA DEMANDA!";
   const pulseColor = isUpdate ? "bg-amber-400" : "bg-red-500";
