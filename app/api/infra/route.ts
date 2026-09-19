@@ -4,15 +4,41 @@ import prisma from "@/lib/prisma";
 
 export async function GET() {
   try {
-    const printers = await prisma.printer.findMany({ include: { sector: true }, orderBy: { createdAt: 'desc' } });
-    const routers = await prisma.router.findMany({ include: { sector: true }, orderBy: { createdAt: 'desc' } });
-    const ipRanges = await prisma.ipRange.findMany({ include: { sector: true, ips: true }, orderBy: { createdAt: 'desc' } });
-    const remoteAccesses = await prisma.remoteAccess.findMany({ include: { sector: true }, orderBy: { createdAt: 'desc' } });
-    const sectors = await prisma.sector.findMany({ orderBy: { name: 'asc' } });
+    let printers = await prisma.printer.findMany({ include: { sector: true } });
+    let routers = await prisma.router.findMany({ include: { sector: true } });
+    let ipRanges = await prisma.ipRange.findMany({ include: { sector: true, ips: true } });
     
+    const remoteAccesses = await prisma.remoteAccess.findMany({ 
+      include: { sector: true }, 
+      orderBy: { sector: { name: 'asc' } } 
+    });
+    
+    const sectors = await prisma.sector.findMany({ 
+      where: { NOT: { name: { contains: "(Inativo)" } } },
+      orderBy: { name: 'asc' } 
+    });
+
+    // 1. Ordenação Numérica dos IPs das Impressoras
+    printers.sort((a, b) => {
+      if (!a.ipAddress) return 1;
+      if (!b.ipAddress) return -1;
+      const numA = a.ipAddress.split('.').map(Number);
+      const numB = b.ipAddress.split('.').map(Number);
+      for (let i = 0; i < 4; i++) {
+        if ((numA[i] || 0) < (numB[i] || 0)) return -1;
+        if ((numA[i] || 0) > (numB[i] || 0)) return 1;
+      }
+      return 0;
+    });
+
+    // 2. Ordenação Alfabética do Wi-Fi (Ignora maiúsculas e minúsculas)
+    routers.sort((a, b) => a.networkName.localeCompare(b.networkName, undefined, { sensitivity: 'base' }));
+
+    // 3. Ordenação Alfanumérica das Faixas de IP
+    ipRanges.sort((a, b) => a.range.localeCompare(b.range, undefined, { numeric: true, sensitivity: 'base' }));
+
     return NextResponse.json({ printers, routers, ipRanges, remoteAccesses, sectors });
   } catch (error) {
-    // ESSA LINHA VAI MOSTRAR O ERRO REAL NO SEU TERMINAL (TELA PRETA)
     console.error("ERRO FATAL NA API DE INFRA:", error); 
     return NextResponse.json({ error: "Erro ao buscar dados." }, { status: 500 });
   }
@@ -64,7 +90,6 @@ export async function DELETE(req: Request) {
   }
 }
 
-// FUNÇÃO PARA EDITAR REGISTROS (PUT)
 export async function PUT(req: Request) {
   try {
     const body = await req.json();
