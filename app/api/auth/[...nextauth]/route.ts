@@ -54,7 +54,7 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 10, // Encerra a sessão automaticamente após 6 horas
+    maxAge: 6 * 60 * 60, // Encerra a sessão automaticamente após 6 horas
     updateAge: 0, // Impede que o servidor renove a sessão silenciosamente no cache
   },
   secret: process.env.NEXTAUTH_SECRET,
