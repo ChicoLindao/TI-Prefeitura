@@ -5,26 +5,46 @@ export default function SessionGuard() {
   const [isExpired, setIsExpired] = useState(false);
 
   useEffect(() => {
-    const checkSession = setInterval(async () => {
+    let timeoutId: NodeJS.Timeout;
+
+    const armarBombaRelogio = async () => {
       try {
-        // O segredo está aqui: cache: "no-store" destrói a ilusão do servidor
-        const res = await fetch("/api/auth/session", { 
-          cache: "no-store",
-          headers: { "Cache-Control": "no-cache" }
-        });
+        // Faz APENAS UMA requisição ao abrir/recarregar a tela
+        const res = await fetch("/api/auth/session", { cache: "no-store" });
+        const session = await res.json();
         
-        const sessionData = await res.json();
-        
-        if (!sessionData || Object.keys(sessionData).length === 0) {
-          clearInterval(checkSession);
+        // Se já não tem sessão, derruba na hora
+        if (!session || Object.keys(session).length === 0) {
           setIsExpired(true);
+          return;
+        }
+
+        // O NextAuth sempre envia a data exata de expiração (session.expires)
+        if (session.expires) {
+          const expirationTime = new Date(session.expires).getTime();
+          const currentTime = Date.now();
+          const tempoRestante = expirationTime - currentTime;
+
+          if (tempoRestante <= 0) {
+            setIsExpired(true);
+          } else {
+            // Arma o alarme para disparar silenciosamente no exato milissegundo que o cookie morre
+            timeoutId = setTimeout(() => {
+              setIsExpired(true);
+            }, tempoRestante);
+          }
         }
       } catch (error) {
-        console.error("Falha ao validar a sessão ativa.");
+        console.error("Falha ao inicializar o vigia de sessão.");
       }
-    }, 60000); // 60000 = Checa a cada 1 minuto
+    };
 
-    return () => clearInterval(checkSession);
+    armarBombaRelogio();
+
+    // Limpa o cronômetro se o usuário mudar de tela antes do tempo acabar
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, []);
 
   if (!isExpired) return null;
