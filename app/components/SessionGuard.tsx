@@ -7,45 +7,57 @@ export default function SessionGuard() {
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
 
-    const armarBombaRelogio = async () => {
+    const armarBloqueioAbsoluto = async () => {
+      if (isExpired) return;
+      
       try {
-        // Faz APENAS UMA requisição ao abrir/recarregar a tela
         const res = await fetch("/api/auth/session", { cache: "no-store" });
         const session = await res.json();
         
-        // Se já não tem sessão, derruba na hora
+        // Se o servidor disse que não tem sessão, cai na hora.
         if (!session || Object.keys(session).length === 0) {
           setIsExpired(true);
           return;
         }
 
-        // O NextAuth sempre envia a data exata de expiração (session.expires)
-        if (session.expires) {
-          const expirationTime = new Date(session.expires).getTime();
-          const currentTime = Date.now();
-          const tempoRestante = expirationTime - currentTime;
+        // Usa APENAS as horas fornecidas pelo servidor (ignora o PC do usuário)
+        const serverTimeStr = res.headers.get("date");
+        const horaAtualDoServidor = serverTimeStr ? new Date(serverTimeStr).getTime() : Date.now();
+        const horaMorteSessao = new Date(session.expires).getTime();
+        
+        // Calcula exatamente quantos milissegundos faltam, baseado no servidor
+        const milissegundosRestantes = horaMorteSessao - horaAtualDoServidor;
 
-          if (tempoRestante <= 0) {
+        if (milissegundosRestantes <= 0) {
+          setIsExpired(true);
+        } else {
+          // O setTimeout conta tempo corrido, ele não é afetado se o usuário mudar a hora do Windows
+          if (timeoutId) clearTimeout(timeoutId);
+          timeoutId = setTimeout(() => {
             setIsExpired(true);
-          } else {
-            // Arma o alarme para disparar silenciosamente no exato milissegundo que o cookie morre
-            timeoutId = setTimeout(() => {
-              setIsExpired(true);
-            }, tempoRestante);
-          }
+          }, milissegundosRestantes);
         }
       } catch (error) {
-        console.error("Falha ao inicializar o vigia de sessão.");
+        console.error("Erro ao blindar a sessão.");
       }
     };
 
-    armarBombaRelogio();
+    armarBloqueioAbsoluto();
 
-    // Limpa o cronômetro se o usuário mudar de tela antes do tempo acabar
+    // Se o usuário minimizou a aba e voltou horas depois, força uma checagem com o servidor na mesma hora
+    const aoMudarFocoDaAba = () => {
+      if (document.visibilityState === "visible") {
+        armarBloqueioAbsoluto();
+      }
+    };
+    
+    document.addEventListener("visibilitychange", aoMudarFocoDaAba);
+
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
+      document.removeEventListener("visibilitychange", aoMudarFocoDaAba);
     };
-  }, []);
+  }, [isExpired]);
 
   if (!isExpired) return null;
 
