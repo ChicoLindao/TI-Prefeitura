@@ -21,9 +21,12 @@ export default async function DashboardLayout({
     <section>
       {/* O ouvinte fica aqui, escondido, operando em todas as telas do Dashboard! */}
       <SocketListener />
-      {/* O vigia de inatividade opera de forma invisível derrubando sessões expiradas */}
-      <SessionGuard />
-      {children}
+      
+      {/* O vigia agora atua como um escudo protetor. Se a sessão expirar, 
+          ele desmonta o {children} do HTML e exibe apenas o aviso. */}
+      <SessionGuard>
+        {children}
+      </SessionGuard>
     </section>
   );
 }

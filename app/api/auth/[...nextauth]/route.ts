@@ -38,6 +38,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.role = (user as any).role;
         token.id = user.id;
+        token.loginTime = Date.now(); // Carimba a hora exata do login
       }
       return token;
     },
@@ -45,6 +46,10 @@ export const authOptions: NextAuthOptions = {
       if (token && session.user) {
         (session.user as any).role = token.role;
         (session.user as any).id = token.id;
+        
+        // Trava a data de expiração para exatas 6 horas após o login inicial
+        const SEIS_HORAS_MS = 6 * 60 * 60 * 1000;
+        session.expires = new Date((token.loginTime as number) + SEIS_HORAS_MS).toISOString();
       }
       return session;
     }
@@ -54,8 +59,8 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 6 * 60 * 60, // Encerra a sessão automaticamente após 6 horas
-    updateAge: 0, // Impede que o servidor renove a sessão silenciosamente no cache
+    maxAge: 6 * 60 * 60, 
+    updateAge: 0, 
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
