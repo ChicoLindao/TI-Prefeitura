@@ -56,7 +56,7 @@ export default function SessionGuard({ children }: { children: React.ReactNode }
 
     // 2. Armadilha Ativa: Dispara a checagem no instante em que ele tocar no PC.
     // É impossível remover estes eventos via console pois a função verificarSeJaMorreu é privada do React.
-    const eventos = ['mousemove', 'keydown', 'scroll', 'click', 'visibilitychange', 'touchstart'];
+    const eventos = ['mousedown', 'keydown', 'visibilitychange', 'touchstart'];
     eventos.forEach(evento => document.addEventListener(evento, verificarSeJaMorreu));
 
     return () => {
