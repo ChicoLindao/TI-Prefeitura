@@ -2,6 +2,7 @@ import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { triggerUpdate } from "@/lib/ws"; 
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -24,6 +25,15 @@ export const authOptions: NextAuthOptions = {
 
         if (!isPasswordValid) return null;
 
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { lastLogin: new Date() }
+        });
+
+        try {
+          await triggerUpdate('nova-demanda', { tipo: 'LOGIN', setor: user.name });
+        } catch (error) {}
+
         return {
           id: user.id,
           name: user.name,
@@ -38,7 +48,31 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.role = (user as any).role;
         token.id = user.id;
-        token.loginTime = Date.now(); // Carimba a hora exata do login
+        token.email = user.email;
+        token.loginTime = Date.now(); 
+      }
+      
+      // 🔥 PROTEÇÃO 1: Se o cookie for antigo e não tiver loginTime, criamos um agora para não dar erro (NaN)
+      if (!token.loginTime) {
+        token.loginTime = Date.now();
+      }
+      
+      if (token.id) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.id as string },
+            select: { forceLogoutAt: true }
+          });
+
+          if (dbUser?.forceLogoutAt) {
+            const forceLogoutTime = dbUser.forceLogoutAt.getTime();
+            if ((token.loginTime as number) < forceLogoutTime) {
+              // 🔥 PROTEÇÃO 2: NUNCA dar "throw new Error" aqui, senão o middleware entra em loop!
+              // Em vez disso, apenas marcamos o token com uma flag de erro.
+              token.error = "ForceLogout";
+            }
+          }
+        } catch (e) { console.error(e); }
       }
       return token;
     },
@@ -47,9 +81,10 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).role = token.role;
         (session.user as any).id = token.id;
         
-        // Trava a data de expiração para exatas 6 horas após o login inicial
-        const SEIS_HORAS_MS = 6 * 60 * 60 * 1000;
-        session.expires = new Date((token.loginTime as number) + SEIS_HORAS_MS).toISOString();
+        // Passa a flag de erro para o Frontend (SessionGuard) conseguir ler
+        if (token.error) {
+          (session as any).error = token.error;
+        }
       }
       return session;
     }
@@ -59,7 +94,7 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 6 * 60 * 60, 
+    maxAge: 6 * 60 * 60, // O próprio NextAuth já controla as 6 Horas aqui
     updateAge: 0, 
   },
   secret: process.env.NEXTAUTH_SECRET,

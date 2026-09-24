@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 export async function GET(req: Request) {
   try {
+    // 1. Proteção: Só permite que a busca seja feita por quem está logado
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Acesso negado" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
     const month = searchParams.get("month");
     const year = searchParams.get("year");

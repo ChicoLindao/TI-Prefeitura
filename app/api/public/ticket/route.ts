@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { sendNotificationEmail } from "@/lib/mailer";
 import { triggerUpdate } from "@/lib/ws"; // <-- Importação do gatilho
+import { createAuditLog } from "@/lib/logger"; // <-- Importamos o Helper de Logs
 
 export async function GET() {
   const sectors = await prisma.sector.findMany({ orderBy: { name: 'asc' } });
@@ -149,6 +150,14 @@ export async function POST(req: Request) {
         include: { sector: true }
       });
       
+      // 🔴 REGISTRO NO LOG DE AUDITORIA (CHAMADO)
+      await createAuditLog({
+        userEmail: data.userEmail,
+        action: "CRIAR",
+        resource: "Portal Público (Chamados)",
+        details: `Novo chamado aberto para o setor "${newTicket.sector.name}" pelo usuário: ${data.personAttended}.`,
+      });
+
       // 👉 Gatilho WebSocket para Chamados Externos:
       await triggerUpdate('nova-demanda', { tipo: 'CHAMADO', setor: newTicket.sector.name });
 
@@ -175,6 +184,14 @@ export async function POST(req: Request) {
           status: "PENDENTE"
         },
         include: { originSector: true, deviceType: true }
+      });
+
+      // 🔴 REGISTRO NO LOG DE AUDITORIA (EQUIPAMENTO)
+      await createAuditLog({
+        userEmail: data.userEmail,
+        action: "CRIAR",
+        resource: "Portal Público (Equipamentos)",
+        details: `Novo equipamento (${newMaintenance.deviceType.name}) recebido do setor "${newMaintenance.originSector.name}" trazido por: ${data.personAttended}.`,
       });
 
       // 👉 Gatilho WebSocket para Equipamentos:

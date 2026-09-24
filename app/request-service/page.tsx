@@ -42,7 +42,18 @@ export default function NovoChamado() {
         setSuccess(true);
       } else {
         const data = await res.json();
-        setErrorMessage(data.error || "Ocorreu um erro ao enviar a solicitação. Tente novamente.");
+        
+        // 🔴 NOVA LÓGICA DE EXIBIÇÃO DE ERRO COM DATA INTELIGENTE
+        if (data.expiresAt) {
+          const expDate = new Date(data.expiresAt);
+          const isTomorrow = expDate.getDate() !== new Date().getDate();
+          const timeString = expDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          
+          setErrorMessage(`Acesso bloqueado por excesso de tentativas. Tente novamente ${isTomorrow ? 'amanhã' : 'hoje'}, às ${timeString}.`);
+        } else {
+          // Fallback caso a API ainda não esteja enviando o expiresAt
+          setErrorMessage(data.error || "Ocorreu um erro ao enviar a solicitação. Tente novamente.");
+        }
       }
     } catch (err) {
       setErrorMessage("Erro de conexão com o servidor.");

@@ -19,33 +19,37 @@ enum Status {
 }
 
 model User {
-  id                    String                   @id @default(uuid())
-  name                  String
-  email                 String                   @unique
-  password              String
-  role                  Role                     @default(FUNCIONARIO)
+  id                   String                   @id @default(uuid())
+  name                 String
+  email                String                   @unique
+  password             String
+  role                 Role                     @default(FUNCIONARIO)
   
-  externalServices      ExternalService[]        @relation("TechsOnExternal")
-  internalMaintenances  InternalMaintenance[]    @relation("TechsOnInternal")
+  // --- NOVOS CAMPOS PARA CONTROLE DE SESSÃO ---
+  lastLogin            DateTime?
+  forceLogoutAt        DateTime?
   
-  externalLogs          ExternalServiceLog[]
-  internalLogs          InternalMaintenanceLog[]
+  externalServices     ExternalService[]        @relation("TechsOnExternal")
+  internalMaintenances InternalMaintenance[]    @relation("TechsOnInternal")
+  
+  externalLogs         ExternalServiceLog[]
+  internalLogs         InternalMaintenanceLog[]
 }
 
 model Sector {
-  id                    String                   @id @default(uuid())
-  name                  String                   @unique
-  externalServices      ExternalService[]
-  internalMaintenances  InternalMaintenance[]
+  id                   String                   @id @default(uuid())
+  name                 String                   @unique
+  externalServices     ExternalService[]
+  internalMaintenances InternalMaintenance[]
   
   // Relacionamentos de Infraestrutura
-  printers              Printer[]
-  routers               Router[]
-  ipRanges              IpRange[]
-  remoteAccesses        RemoteAccess[] // <-- CONEXÃO CORRIGIDA AQUI
+  printers             Printer[]
+  routers              Router[]
+  ipRanges             IpRange[]
+  remoteAccesses       RemoteAccess[] // <-- CONEXÃO CORRIGIDA AQUI
 
-  createdAt             DateTime                 @default(now())
-  updatedAt             DateTime                 @default(now()) @updatedAt
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @default(now()) @updatedAt
 }
 
 // ----------------------------------------------------
@@ -81,65 +85,65 @@ model Router {
 // ----------------------------------------------------
 
 model DeviceType {
-  id                    String                   @id @default(uuid())
-  name                  String                   @unique
-  internalMaintenances  InternalMaintenance[]
+  id                   String                   @id @default(uuid())
+  name                 String                   @unique
+  internalMaintenances InternalMaintenance[]
 }
 
 model ExternalService {
-  id                    String                   @id @default(uuid())
-  sectorId              String
-  sector                Sector                   @relation(fields: [sectorId], references: [id])
-  personAttended        String
-  userEmail             String
-  description           String?                   
-  status                Status                   @default(PENDENTE)
-  createdAt             DateTime                 @default(now()) 
-  updatedAt             DateTime                 @updatedAt
+  id             String               @id @default(uuid())
+  sectorId       String
+  sector         Sector               @relation(fields: [sectorId], references: [id])
+  personAttended String
+  userEmail      String
+  description    String?                  
+  status         Status               @default(PENDENTE)
+  createdAt      DateTime             @default(now()) 
+  updatedAt      DateTime             @updatedAt
 
-  techs                 User[]                   @relation("TechsOnExternal") 
-  logs                  ExternalServiceLog[]
+  techs          User[]               @relation("TechsOnExternal") 
+  logs           ExternalServiceLog[]
 }
 
 model ExternalServiceLog {
-  id                    String                   @id @default(uuid())
-  externalServiceId     String
-  externalService       ExternalService          @relation(fields: [externalServiceId], references: [id], onDelete: Cascade)
-  techId                String?
-  tech                  User?                    @relation(fields: [techId], references: [id])
-  type                  String
-  description           String
-  createdAt             DateTime                 @default(now())
+  id                String           @id @default(uuid())
+  externalServiceId String
+  externalService   ExternalService  @relation(fields: [externalServiceId], references: [id], onDelete: Cascade)
+  techId            String?
+  tech              User?            @relation(fields: [techId], references: [id])
+  type              String
+  description       String
+  createdAt         DateTime         @default(now())
 }
 
 model InternalMaintenance {
-  id                    String                   @id @default(uuid())
-  deviceTypeId          String
-  deviceType            DeviceType               @relation(fields: [deviceTypeId], references: [id])
-  patrimony             String?
-  brand                 String?
-  originSectorId        String
-  originSector          Sector                   @relation(fields: [originSectorId], references: [id])
-  equipmentUser         String
-  userEmail             String?                   
-  reportedProblem       String
-  status                Status                   @default(PENDENTE)
-  receiveDate           DateTime                 @default(now()) 
-  updatedAt             DateTime                 @updatedAt
+  id              String                   @id @default(uuid())
+  deviceTypeId    String
+  deviceType      DeviceType               @relation(fields: [deviceTypeId], references: [id])
+  patrimony       String?
+  brand           String?
+  originSectorId  String
+  originSector    Sector                   @relation(fields: [originSectorId], references: [id])
+  equipmentUser   String
+  userEmail       String?                  
+  reportedProblem String
+  status          Status                   @default(PENDENTE)
+  receiveDate     DateTime                 @default(now()) 
+  updatedAt       DateTime                 @updatedAt
 
-  techs                 User[]                   @relation("TechsOnInternal") 
-  logs                  InternalMaintenanceLog[]
+  techs           User[]                   @relation("TechsOnInternal") 
+  logs            InternalMaintenanceLog[]
 }
 
 model InternalMaintenanceLog {
-  id                    String                   @id @default(uuid())
+  id                    String              @id @default(uuid())
   internalMaintenanceId String
-  internalMaintenance   InternalMaintenance      @relation(fields: [internalMaintenanceId], references: [id], onDelete: Cascade)
+  internalMaintenance   InternalMaintenance @relation(fields: [internalMaintenanceId], references: [id], onDelete: Cascade)
   techId                String?
-  tech                  User?                    @relation(fields: [techId], references: [id])
+  tech                  User?               @relation(fields: [techId], references: [id])
   action                String
-  type                  String?                  @default("MANUAL") 
-  createdAt             DateTime                 @default(now())
+  type                  String?             @default("MANUAL") 
+  createdAt             DateTime            @default(now())
 }
 
 // ----------------------------------------------------
@@ -203,5 +207,15 @@ model BlockedEmail {
 model AlertEmail {
   id        String   @id @default(uuid())
   email     String   @unique
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userEmail String
+  action    String   // Ação (Ex: CRIAR, ATUALIZAR, DELETAR, LOGIN)
+  resource  String   // Onde foi feito (Ex: Infraestrutura, Chamados, Técnicos)
+  details   String?  // Detalhes extras (Ex: "Apagou a senha do Roteador X")
+  ipAddress String?  // IP da máquina que fez a requisição
   createdAt DateTime @default(now())
 }

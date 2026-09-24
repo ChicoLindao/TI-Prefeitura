@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { signOut } from "next-auth/react"; // <-- Importação vital para quebrar o loop
 
 export default function SessionGuard({ children }: { children: React.ReactNode }) {
   const [isExpired, setIsExpired] = useState(false);
@@ -20,6 +21,13 @@ export default function SessionGuard({ children }: { children: React.ReactNode }
         
         if (!session || Object.keys(session).length === 0) {
           setIsExpired(true);
+          return;
+        }
+
+        // 🔴 Se o backend enviar a flag de expulsão, destrói o cookie na hora
+        if (session.error === "ForceLogout") {
+          setIsExpired(true);
+          signOut({ callbackUrl: "/login" });
           return;
         }
 
@@ -55,7 +63,6 @@ export default function SessionGuard({ children }: { children: React.ReactNode }
     intervalId = setInterval(verificarSeJaMorreu, 10000); // Checa a cada 10 segundos
 
     // 2. Armadilha Ativa: Dispara a checagem no instante em que ele tocar no PC.
-    // É impossível remover estes eventos via console pois a função verificarSeJaMorreu é privada do React.
     const eventos = ['mousedown', 'keydown', 'visibilitychange', 'touchstart'];
     eventos.forEach(evento => document.addEventListener(evento, verificarSeJaMorreu));
 
@@ -78,7 +85,7 @@ export default function SessionGuard({ children }: { children: React.ReactNode }
             Sua sessão foi encerrada por segurança. Por favor, faça login novamente.
           </p>
           <button 
-            onClick={() => window.location.href = "/login"} 
+            onClick={() => signOut({ callbackUrl: "/login" })} // <-- Limpa o cookie e redireciona com segurança
             className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3.5 rounded-xl font-semibold transition-all shadow-sm hover:shadow-md"
           >
             Fazer Login Novamente

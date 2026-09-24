@@ -2,13 +2,14 @@
 import { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import { useRouter } from 'next/navigation';
+import { signOut, useSession } from 'next-auth/react';
 
 export default function SocketListener() {
   const [notification, setNotification] = useState<{tipo: string, setor: string} | null>(null);
   const router = useRouter();
+  const { data: session } = useSession();
 
   useEffect(() => {
-    // 1. Pede permissão para enviar notificações no navegador assim que o técnico entra no sistema
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
     }
@@ -16,39 +17,61 @@ export default function SocketListener() {
     const socket = io({ path: '/api/socket' });
 
     socket.on('nova-demanda', (payload) => {
-      console.log("🚨 Notificação recebida em tempo real!", payload);
+      console.log("🚨 Evento recebido via WebSocket:", payload);
+
+      // 🔴 1. INTERCEPTA A EXPULSÃO
+      if (payload.tipo === 'FORCE_LOGOUT') {
+        if (session?.user && (session.user as any).id === payload.alvoId) {
+          signOut({ callbackUrl: '/login' });
+        } else {
+          window.dispatchEvent(new Event("atualiza-dados"));
+          router.refresh();
+        }
+        return; 
+      }
+
+      // 🟢 2. INTERCEPTA O LOGIN
+      if (payload.tipo === 'LOGIN') {
+        window.dispatchEvent(new Event("atualiza-dados"));
+        router.refresh();
+        return; 
+      }
+
+      // 🟡 3. INTERCEPTA ALERTAS DE SEGURANÇA (Bloqueios Anti-Spam)
+      if (payload.tipo === 'SECURITY_ALERT') {
+        window.dispatchEvent(new Event("atualiza-dados")); // Avisa a tela GlobalSettings para recarregar
+        router.refresh();
+        return; // Impede que abra pop-up azul na tela!
+      }
+
+      // 🔵 4. SE FOR CHAMADO OU EQUIPAMENTO, CRIA O POP-UP NORMALMENTE
       setNotification(payload);
-
-      // Recarrega as listas do banco de dados na hora
       router.refresh();
+      window.dispatchEvent(new Event("atualiza-dados"));
 
-      // Toca o aviso sonoro
       try {
         const audio = new Audio('/alerta.mp3');
-        audio.play().catch(e => console.log("Áudio bloqueado pelo navegador até o usuário interagir."));
+        audio.play().catch(e => console.log("Áudio bloqueado pelo navegador."));
       } catch (e) {}
 
-      // Lógica para saber se é um chamado novo ou apenas uma atualização
       const isUpdate = ["Status Atualizado", "Novo Histórico", "Técnico Atribuído", "Chamado Excluído", "OS Excluída", "Atualização"].includes(payload.setor);
       const tituloNotificacao = isUpdate ? "Atualização no Sistema TI" : "NOVA DEMANDA TI!";
       const corpoNotificacao = isUpdate 
         ? `${payload.tipo === 'CHAMADO' ? 'Chamado' : 'Equipamento'} - ${payload.setor}`
         : `Novo(a) ${payload.tipo === 'CHAMADO' ? 'chamado' : 'equipamento'} do setor: ${payload.setor}`;
 
-      // 2. Dispara a notificação nativa do Windows/Navegador (se o técnico tiver permitido)
       if ("Notification" in window && Notification.permission === "granted") {
         new Notification(tituloNotificacao, {
           body: corpoNotificacao,
-          icon: "/favicon.ico", // Puxa o ícone padrão do seu site
+          icon: "/favicon.ico",
         });
       }
 
-      // Oculta o pop-up azul interno após 6 segundos
       setTimeout(() => setNotification(null), 6000);
     });
 
     return () => { socket.disconnect(); };
-  }, [router]);
+  }, [router, session]);
 
   if (!notification) return null;
 

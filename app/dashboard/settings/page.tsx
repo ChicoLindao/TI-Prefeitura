@@ -1,5 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
+import AuditLogs from "../../components/AuditLogs"; 
+import SessionManager from "../../components/SessionManager"; 
+import SocketListener from "../../components/SocketListener";
 
 export default function GlobalSettings() {
   const [activeTab, setActiveTab] = useState("EQUIPE");
@@ -43,7 +46,8 @@ export default function GlobalSettings() {
       setSectors(dataSettings.sectors);
       setDevices(dataSettings.devices);
 
-      const resSecurity = await fetch("/api/security");
+      // 🔥 Evitando cache para garantir dados fresquinhos na área de segurança
+      const resSecurity = await fetch(`/api/security?t=${new Date().getTime()}`, { cache: "no-store" });
       if (resSecurity.ok) {
         const dataSecurity = await resSecurity.json();
         setIpLimits(dataSecurity.ipLimits || []);
@@ -55,7 +59,16 @@ export default function GlobalSettings() {
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { 
+    fetchData(); 
+
+    // 🔴 LÓGICA WEBSOCKET: Escuta o evento local disparado pelo SocketListener
+    const handleWsUpdate = () => fetchData();
+    window.addEventListener("atualiza-dados", handleWsUpdate);
+    
+    // Cleanup do listener
+    return () => window.removeEventListener("atualiza-dados", handleWsUpdate);
+  }, []);
 
   // ==========================================
   // FUNÇÕES: EQUIPE, SETORES E EQUIPAMENTOS
@@ -222,9 +235,12 @@ export default function GlobalSettings() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 transition-colors px-4 py-6 sm:p-8 relative">
       
+      {/* COMPONENTE DO WEBSOCKET */}
+      <SocketListener />
+
       {/* TOAST */}
       {toast.show && (
-        <div className={`fixed top-8 right-8 z-50 px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3 font-semibold transition-all duration-300 ${
+        <div className={`fixed top-8 right-8 z-[100] px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3 font-semibold transition-all duration-300 ${
           toast.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'
         }`}>
           <span className="text-xl">{toast.type === 'success' ? '✅' : '❌'}</span>
@@ -234,7 +250,7 @@ export default function GlobalSettings() {
 
       {/* MODAL */}
       {modal.show && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
           <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center">
             <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
               <span className="text-2xl">⚠️</span>
@@ -313,122 +329,137 @@ export default function GlobalSettings() {
             CONTEÚDO DA ABA: SEGURANÇA
             ========================================= */}
         {activeTab === 'SECURITY' ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-300">
-            {/* Card: IPs com tentativas */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-              <div className="flex items-center gap-3 mb-4 border-b border-slate-100 pb-3">
-                <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
-                  <span className="text-lg">🛡️</span>
+          <div className="space-y-6 animate-in fade-in duration-300">
+            {/* GRID DOS 3 CARDS ORIGINAIS DE SEGURANÇA */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Card: IPs com tentativas */}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <div className="flex items-center gap-3 mb-4 border-b border-slate-100 pb-3">
+                  <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
+                    <span className="text-lg">🛡️</span>
+                  </div>
+                  <h2 className="text-lg font-bold text-slate-800">IPs Bloqueados</h2>
                 </div>
-                <h2 className="text-lg font-bold text-slate-800">IPs Bloqueados</h2>
-              </div>
-              {ipLimits.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-8">Nenhum IP com tentativas registradas.</p>
-              ) : (
-                <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
-                  {ipLimits.map((ip: any) => (
-                    <div key={ip.ip} className="flex items-center justify-between bg-slate-50 rounded-xl p-3 border border-slate-100">
-                      <div>
-                        <p className="font-semibold text-slate-700 text-sm">{ip.ip}</p>
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                          ip.count > 3 ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
-                        }`}>
-                          {ip.count} tentativas
-                        </span>
+                {ipLimits.length === 0 ? (
+                  <p className="text-sm text-slate-400 text-center py-8">Nenhum IP com tentativas registradas.</p>
+                ) : (
+                  <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
+                    {ipLimits.map((ip: any) => (
+                      <div key={ip.ip} className="flex items-center justify-between bg-slate-50 rounded-xl p-3 border border-slate-100">
+                        <div>
+                          <p className="font-semibold text-slate-700 text-sm">{ip.ip}</p>
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                            ip.count > 3 ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
+                          }`}>
+                            {ip.count} tentativas
+                          </span>
+                        </div>
+                        <button onClick={() => handleSecurityAction(ip.ip, 'resetIp')} className="text-blue-600 font-semibold text-sm hover:text-blue-800 transition-colors hover:underline">
+                          Resetar
+                        </button>
                       </div>
-                      <button onClick={() => handleSecurityAction(ip.ip, 'resetIp')} className="text-blue-600 font-semibold text-sm hover:text-blue-800 transition-colors hover:underline">
-                        Resetar
-                      </button>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Card: E-mails Bloqueados */}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <div className="flex items-center gap-3 mb-4 border-b border-slate-100 pb-3">
+                  <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
+                    <span className="text-lg">🚫</span>
+                  </div>
+                  <h2 className="text-lg font-bold text-slate-800">Blacklist (E-mails)</h2>
                 </div>
-              )}
+                <form onSubmit={(e) => handleAddSecurityEmail(e, 'addBlockedEmail')} className="flex gap-2 mb-4">
+                  <input
+                    required
+                    type="email"
+                    placeholder="Bloquear e-mail..."
+                    value={newBlockedEmail}
+                    onChange={e => setNewBlockedEmail(e.target.value)}
+                    className="flex-1 w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-none transition-all text-sm"
+                  />
+                  <button type="submit" className="bg-red-600 text-white px-4 py-2.5 rounded-xl font-semibold hover:bg-red-700 transition-all duration-200 shadow-sm hover:shadow-md text-sm whitespace-nowrap">
+                    Bloquear
+                  </button>
+                </form>
+                {blockedEmails.length === 0 ? (
+                  <p className="text-sm text-slate-400 text-center py-6">Nenhum e-mail bloqueado.</p>
+                ) : (
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
+                    {blockedEmails.map((b: any) => (
+                      <div key={b.id} className="flex items-center justify-between bg-slate-50 rounded-xl p-3 border border-slate-100">
+                        <div className="flex flex-col truncate mr-2">
+                          <span className="text-slate-700 text-sm font-medium truncate">{b.email}</span>
+                          {b.isTemporary ? (() => {
+                            if (!b.expiresAt) return null;
+                            const expDate = new Date(b.expiresAt);
+                            const isTomorrow = expDate.getDate() !== new Date().getDate();
+                            return (
+                              <span className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md w-fit mt-1 font-medium">
+                                ⏳ Bloqueado até {isTomorrow ? 'Amanhã' : 'Hoje'}, às {expDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            );
+                          })() : (
+                            <span className="text-[11px] text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-md w-fit mt-1 font-medium">
+                              🚫 Permanente
+                            </span>
+                          )}
+                        </div>
+                        <button onClick={() => handleSecurityAction(b.id, 'removeBlockedEmail')} className="text-red-500 font-semibold text-sm hover:text-red-700 transition-colors hover:underline ml-2 whitespace-nowrap">
+                          Remover
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Card: E-mails de Alerta */}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <div className="flex items-center gap-3 mb-4 border-b border-slate-100 pb-3">
+                  <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+                    <span className="text-lg">🔔</span>
+                  </div>
+                  <h2 className="text-lg font-bold text-slate-800">Alertas de Spam</h2>
+                </div>
+                <form onSubmit={(e) => handleAddSecurityEmail(e, 'addAlertEmail')} className="flex gap-2 mb-4">
+                  <input
+                    required
+                    type="email"
+                    placeholder="Adicionar TI..."
+                    value={newAlertEmail}
+                    onChange={e => setNewAlertEmail(e.target.value)}
+                    className="flex-1 w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-none transition-all text-sm"
+                  />
+                  <button type="submit" className="bg-blue-600 text-white px-4 py-2.5 rounded-xl font-semibold hover:bg-blue-700 transition-all duration-200 shadow-sm hover:shadow-md text-sm whitespace-nowrap">
+                    Adicionar
+                  </button>
+                </form>
+                {alertEmails.length === 0 ? (
+                  <p className="text-sm text-slate-400 text-center py-6">Nenhum e-mail de alerta cadastrado.</p>
+                ) : (
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
+                    {alertEmails.map((a: any) => (
+                      <div key={a.id} className="flex items-center justify-between bg-slate-50 rounded-xl p-3 border border-slate-100">
+                        <span className="text-slate-700 text-sm font-medium truncate">{a.email}</span>
+                        <button onClick={() => handleSecurityAction(a.id, 'removeAlertEmail')} className="text-red-500 font-semibold text-sm hover:text-red-700 transition-colors hover:underline ml-2">
+                          Remover
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Card: E-mails Bloqueados */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-              <div className="flex items-center gap-3 mb-4 border-b border-slate-100 pb-3">
-                <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
-                  <span className="text-lg">🚫</span>
-                </div>
-                <h2 className="text-lg font-bold text-slate-800">Blacklist (E-mails)</h2>
-              </div>
-              <form onSubmit={(e) => handleAddSecurityEmail(e, 'addBlockedEmail')} className="flex gap-2 mb-4">
-                <input
-                  required
-                  type="email"
-                  placeholder="Bloquear e-mail..."
-                  value={newBlockedEmail}
-                  onChange={e => setNewBlockedEmail(e.target.value)}
-                  className="flex-1 w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-none transition-all text-sm"
-                />
-                <button type="submit" className="bg-red-600 text-white px-4 py-2.5 rounded-xl font-semibold hover:bg-red-700 transition-all duration-200 shadow-sm hover:shadow-md text-sm whitespace-nowrap">
-                  Bloquear
-                </button>
-              </form>
-              {blockedEmails.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-6">Nenhum e-mail bloqueado.</p>
-              ) : (
-                <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
-                  {blockedEmails.map((b: any) => (
-                    <div key={b.id} className="flex items-center justify-between bg-slate-50 rounded-xl p-3 border border-slate-100">
-                      <div className="flex flex-col truncate mr-2">
-                        <span className="text-slate-700 text-sm font-medium truncate">{b.email}</span>
-                        {b.isTemporary ? (
-                          <span className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md w-fit mt-1 font-medium">
-                            ⏳ Temporário {b.expiresAt ? `(Expira: ${new Date(b.expiresAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })})` : ''}
-                          </span>
-                        ) : (
-                          <span className="text-[11px] text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-md w-fit mt-1 font-medium">
-                            🚫 Permanente
-                          </span>
-                        )}
-                      </div>
-                      <button onClick={() => handleSecurityAction(b.id, 'removeBlockedEmail')} className="text-red-500 font-semibold text-sm hover:text-red-700 transition-colors hover:underline ml-2 whitespace-nowrap">
-                        Remover
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
+            {/* NOVOS COMPONENTES (LOGS E SESSÃO) AQUI EMBAIXO */}
+            <div className="grid grid-cols-1 gap-6">
+              <SessionManager />
+              <AuditLogs />
             </div>
 
-            {/* Card: E-mails de Alerta */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-              <div className="flex items-center gap-3 mb-4 border-b border-slate-100 pb-3">
-                <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-                  <span className="text-lg">🔔</span>
-                </div>
-                <h2 className="text-lg font-bold text-slate-800">Alertas de Spam</h2>
-              </div>
-              <form onSubmit={(e) => handleAddSecurityEmail(e, 'addAlertEmail')} className="flex gap-2 mb-4">
-                <input
-                  required
-                  type="email"
-                  placeholder="Adicionar TI..."
-                  value={newAlertEmail}
-                  onChange={e => setNewAlertEmail(e.target.value)}
-                  className="flex-1 w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-none transition-all text-sm"
-                />
-                <button type="submit" className="bg-blue-600 text-white px-4 py-2.5 rounded-xl font-semibold hover:bg-blue-700 transition-all duration-200 shadow-sm hover:shadow-md text-sm whitespace-nowrap">
-                  Adicionar
-                </button>
-              </form>
-              {alertEmails.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-6">Nenhum e-mail de alerta cadastrado.</p>
-              ) : (
-                <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
-                  {alertEmails.map((a: any) => (
-                    <div key={a.id} className="flex items-center justify-between bg-slate-50 rounded-xl p-3 border border-slate-100">
-                      <span className="text-slate-700 text-sm font-medium truncate">{a.email}</span>
-                      <button onClick={() => handleSecurityAction(a.id, 'removeAlertEmail')} className="text-red-500 font-semibold text-sm hover:text-red-700 transition-colors hover:underline ml-2">
-                        Remover
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
         ) : (
           

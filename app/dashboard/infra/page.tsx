@@ -84,14 +84,14 @@ export default function InfraPage() {
 
   const tabs = [
     { key: 'printers', label: 'Impressoras', icon: '🖨️', color: 'blue' },
-    { key: 'routers', label: 'Wi-fi', icon: '📡', color: 'violet' },
+    { key: 'routers', label: 'Wi-fi', icon: '📡', color: 'cyan' },
     { key: 'ips', label: 'Faixas de IP', icon: '🌐', color: 'emerald' },
     { key: 'remote', label: 'Acesso Remoto', icon: '💻', color: 'orange' },
   ] as const;
 
   const tabColorMap: Record<string, { active: string; inactive: string; btn: string; accent: string; ring: string }> = {
     blue: { active: "text-blue-600 border-blue-600 bg-blue-50/50", inactive: "text-slate-400 hover:text-slate-600 hover:bg-slate-50", btn: "bg-blue-600 hover:bg-blue-700", accent: "text-blue-600", ring: "focus:ring-blue-500" },
-    violet: { active: "text-violet-600 border-violet-600 bg-violet-50/50", inactive: "text-slate-400 hover:text-slate-600 hover:bg-slate-50", btn: "bg-violet-600 hover:bg-violet-700", accent: "text-violet-600", ring: "focus:ring-violet-500" },
+    cyan: { active: "text-cyan-600 border-cyan-600 bg-cyan-50/50", inactive: "text-slate-400 hover:text-slate-600 hover:bg-slate-50", btn: "bg-cyan-600 hover:bg-cyan-700", accent: "text-cyan-600", ring: "focus:ring-cyan-500" },
     emerald: { active: "text-emerald-600 border-emerald-600 bg-emerald-50/50", inactive: "text-slate-400 hover:text-slate-600 hover:bg-slate-50", btn: "bg-emerald-600 hover:bg-emerald-700", accent: "text-emerald-600", ring: "focus:ring-emerald-500" },
     orange: { active: "text-orange-600 border-orange-600 bg-orange-50/50", inactive: "text-slate-400 hover:text-slate-600 hover:bg-slate-50", btn: "bg-orange-600 hover:bg-orange-700", accent: "text-orange-600", ring: "focus:ring-orange-500" },
   };
@@ -104,7 +104,7 @@ export default function InfraPage() {
       
       {/* Toast Notification */}
       {toast.show && (
-        <div className={`fixed top-8 right-8 z-50 px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3 font-semibold transition-all duration-300 animate-in slide-in-from-top-5 ${toast.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
+        <div className={`fixed top-8 right-8 z-[100] px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3 font-semibold transition-all duration-300 ${toast.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
           <span className="text-xl">{toast.type === 'success' ? '✅' : '❌'}</span>
           {toast.message}
         </div>
@@ -177,9 +177,9 @@ export default function InfraPage() {
               </div>
               {formPrinter.show && (
                 <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 mb-6 flex flex-col sm:flex-row gap-3">
-                  <input type="text" placeholder="Modelo da Impressora" value={formPrinter.model} onChange={e => setFormPrinter({ ...formPrinter, model: e.target.value })} className={`flex-1 p-3 rounded-xl border border-slate-200 bg-white text-slate-700 placeholder-slate-400 focus:ring-2 ${colors.ring} focus:border-transparent focus:outline-none transition-all`} />
-                  <input type="text" placeholder="Endereço IP" value={formPrinter.ipAddress} onChange={e => setFormPrinter({ ...formPrinter, ipAddress: e.target.value })} className={`flex-1 p-3 rounded-xl border border-slate-200 bg-white text-slate-700 placeholder-slate-400 font-mono focus:ring-2 ${colors.ring} focus:border-transparent focus:outline-none transition-all`} />
-                  <select value={formPrinter.sectorId} onChange={e => setFormPrinter({ ...formPrinter, sectorId: e.target.value })} className={`flex-1 p-3 rounded-xl border border-slate-200 bg-white text-slate-700 focus:ring-2 ${colors.ring} focus:border-transparent focus:outline-none transition-all`}>
+                  <input type="text" placeholder="Modelo da Impressora" value={formPrinter.model} onChange={e => setFormPrinter({ ...formPrinter, model: e.target.value })} className={`flex-1 p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 placeholder-slate-400 focus:ring-2 ${colors.ring} focus:border-transparent focus:outline-none transition-all`} />
+                  <input type="text" placeholder="Endereço IP" value={formPrinter.ipAddress} onChange={e => setFormPrinter({ ...formPrinter, ipAddress: e.target.value })} className={`flex-1 p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 placeholder-slate-400 font-mono focus:ring-2 ${colors.ring} focus:border-transparent focus:outline-none transition-all`} />
+                  <select value={formPrinter.sectorId} onChange={e => setFormPrinter({ ...formPrinter, sectorId: e.target.value })} className={`flex-1 p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 focus:ring-2 ${colors.ring} focus:border-transparent focus:outline-none transition-all`}>
                     <option value="">Selecione o Setor...</option>
                     {data.sectors.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
@@ -196,8 +196,8 @@ export default function InfraPage() {
                     <p className="text-sm text-slate-500 mt-2">Setor: {p.sector?.name}</p>
                     <p className="text-blue-600 font-semibold mt-1 text-sm">Modelo: {p.model}</p>
                     <div className="mt-4 flex gap-3">
-                      <button onClick={() => { setFormPrinter({ id: p.id, model: p.model, ipAddress: p.ipAddress, sectorId: p.sectorId, show: true }); window.scrollTo({top:0, behavior:'smooth'}); }} className="text-blue-500 hover:text-blue-700 font-semibold text-xs transition-colors hover:underline">Editar</button>
-                      <button onClick={() => confirmDelete(p.id, 'PRINTER')} className="text-red-400 hover:text-red-600 font-semibold text-xs transition-colors hover:underline">Excluir</button>
+                      <button onClick={() => { setFormPrinter({ id: p.id, model: p.model, ipAddress: p.ipAddress, sectorId: p.sectorId, show: true }); window.scrollTo({top:0, behavior:'smooth'}); }} className="text-blue-600 hover:text-blue-800 font-semibold text-xs transition-colors hover:underline">Editar</button>
+                      <button onClick={() => confirmDelete(p.id, 'PRINTER')} className="text-red-500 hover:text-red-700 font-semibold text-xs transition-colors hover:underline">Excluir</button>
                     </div>
                   </div>
                 ))}
@@ -216,9 +216,9 @@ export default function InfraPage() {
               </div>
               {formRouter.show && (
                 <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 mb-6 flex flex-col sm:flex-row gap-3">
-                  <input type="text" placeholder="Nome da Rede" value={formRouter.networkName} onChange={e => setFormRouter({ ...formRouter, networkName: e.target.value })} className={`flex-1 p-3 rounded-xl border border-slate-200 bg-white text-slate-700 placeholder-slate-400 focus:ring-2 ${colors.ring} focus:border-transparent focus:outline-none transition-all`} />
-                  <input type="text" placeholder="Senha" value={formRouter.password} onChange={e => setFormRouter({ ...formRouter, password: e.target.value })} className={`flex-1 p-3 rounded-xl border border-slate-200 bg-white text-slate-700 placeholder-slate-400 font-mono focus:ring-2 ${colors.ring} focus:border-transparent focus:outline-none transition-all`} />
-                  <select value={formRouter.sectorId} onChange={e => setFormRouter({ ...formRouter, sectorId: e.target.value })} className={`flex-1 p-3 rounded-xl border border-slate-200 bg-white text-slate-700 focus:ring-2 ${colors.ring} focus:border-transparent focus:outline-none transition-all`}>
+                  <input type="text" placeholder="Nome da Rede" value={formRouter.networkName} onChange={e => setFormRouter({ ...formRouter, networkName: e.target.value })} className={`flex-1 p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 placeholder-slate-400 focus:ring-2 ${colors.ring} focus:border-transparent focus:outline-none transition-all`} />
+                  <input type="text" placeholder="Senha" value={formRouter.password} onChange={e => setFormRouter({ ...formRouter, password: e.target.value })} className={`flex-1 p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 placeholder-slate-400 font-mono focus:ring-2 ${colors.ring} focus:border-transparent focus:outline-none transition-all`} />
+                  <select value={formRouter.sectorId} onChange={e => setFormRouter({ ...formRouter, sectorId: e.target.value })} className={`flex-1 p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 focus:ring-2 ${colors.ring} focus:border-transparent focus:outline-none transition-all`}>
                     <option value="">Selecione o Setor...</option>
                     {data.sectors.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
@@ -235,8 +235,8 @@ export default function InfraPage() {
                     <p className="text-sm text-slate-500 mt-1">Setor: {r.sector?.name}</p>
                     <p className="font-mono mt-2 text-sm text-slate-700 bg-white border border-slate-200 px-3 py-1.5 rounded-lg inline-block">Senha: {r.password}</p>
                     <div className="mt-4 flex gap-3">
-                      <button onClick={() => { setFormRouter({ id: r.id, networkName: r.networkName, password: r.password, sectorId: r.sectorId, show: true }); window.scrollTo({top:0, behavior:'smooth'}); }} className="text-violet-500 hover:text-violet-700 font-semibold text-xs transition-colors hover:underline">Editar</button>
-                      <button onClick={() => confirmDelete(r.id, 'ROUTER')} className="text-red-400 hover:text-red-600 font-semibold text-xs transition-colors hover:underline">Excluir</button>
+                      <button onClick={() => { setFormRouter({ id: r.id, networkName: r.networkName, password: r.password, sectorId: r.sectorId, show: true }); window.scrollTo({top:0, behavior:'smooth'}); }} className="text-cyan-600 hover:text-cyan-800 font-semibold text-xs transition-colors hover:underline">Editar</button>
+                      <button onClick={() => confirmDelete(r.id, 'ROUTER')} className="text-red-500 hover:text-red-700 font-semibold text-xs transition-colors hover:underline">Excluir</button>
                     </div>
                   </div>
                 ))}
@@ -255,8 +255,8 @@ export default function InfraPage() {
               </div>
               {formIpRange.show && (
                 <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 mb-6 flex flex-col sm:flex-row gap-3">
-                  <input type="text" placeholder="Nome da Faixa (Ex: Faixa 1 - 192.168.0.x)" value={formIpRange.range} onChange={e => setFormIpRange({ ...formIpRange, range: e.target.value })} className={`flex-1 p-3 rounded-xl border border-slate-200 bg-white text-slate-700 placeholder-slate-400 font-mono focus:ring-2 ${colors.ring} focus:border-transparent focus:outline-none transition-all`} />
-                  <select value={formIpRange.sectorId} onChange={e => setFormIpRange({ ...formIpRange, sectorId: e.target.value })} className={`flex-1 p-3 rounded-xl border border-slate-200 bg-white text-slate-700 focus:ring-2 ${colors.ring} focus:border-transparent focus:outline-none transition-all`}>
+                  <input type="text" placeholder="Nome da Faixa (Ex: Faixa 1 - 192.168.0.x)" value={formIpRange.range} onChange={e => setFormIpRange({ ...formIpRange, range: e.target.value })} className={`flex-1 p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 placeholder-slate-400 font-mono focus:ring-2 ${colors.ring} focus:border-transparent focus:outline-none transition-all`} />
+                  <select value={formIpRange.sectorId} onChange={e => setFormIpRange({ ...formIpRange, sectorId: e.target.value })} className={`flex-1 p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 focus:ring-2 ${colors.ring} focus:border-transparent focus:outline-none transition-all`}>
                     <option value="">Selecione o Setor...</option>
                     {data.sectors.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
@@ -282,8 +282,8 @@ export default function InfraPage() {
                           <p className="text-sm text-slate-400">Setor: {i.sector?.name}</p>
                         </div>
                         <div className="flex gap-2">
-                          <button onClick={() => { setFormIpRange({ id: i.id, range: i.range, sectorId: i.sectorId, show: true }); window.scrollTo({top:0, behavior:'smooth'}); }} className="text-emerald-500 hover:text-emerald-700 font-semibold text-xs transition-colors hover:underline">Editar Faixa</button>
-                          <button onClick={() => confirmDelete(i.id, 'IP_RANGE')} className="text-red-400 hover:text-red-600 font-semibold text-xs transition-colors hover:underline">Apagar Faixa</button>
+                          <button onClick={() => { setFormIpRange({ id: i.id, range: i.range, sectorId: i.sectorId, show: true }); window.scrollTo({top:0, behavior:'smooth'}); }} className="text-emerald-600 hover:text-emerald-800 font-semibold text-xs transition-colors hover:underline">Editar Faixa</button>
+                          <button onClick={() => confirmDelete(i.id, 'IP_RANGE')} className="text-red-500 hover:text-red-700 font-semibold text-xs transition-colors hover:underline">Apagar Faixa</button>
                         </div>
                       </div>
 
@@ -293,8 +293,8 @@ export default function InfraPage() {
                           <div key={ip.id} className="flex justify-between items-center bg-white p-2.5 border border-slate-200 rounded-lg text-sm">
                             <span><strong className="text-emerald-600 font-mono">{ip.ip}</strong> - {ip.device || 'Sem descrição'}</span>
                             <div className="flex gap-2">
-                              <button onClick={() => setFormIpAddress({ id: ip.id, ip: ip.ip, device: ip.device, rangeId: i.id, show: true })} className="text-emerald-400 hover:text-emerald-600 transition-colors" title="Editar">✏️</button>
-                              <button onClick={() => confirmDelete(ip.id, 'IP_ADDRESS')} className="text-red-400 hover:text-red-600 transition-colors" title="Excluir">✕</button>
+                              <button onClick={() => setFormIpAddress({ id: ip.id, ip: ip.ip, device: ip.device, rangeId: i.id, show: true })} className="text-emerald-600 hover:text-emerald-800 transition-colors" title="Editar">✏️</button>
+                              <button onClick={() => confirmDelete(ip.id, 'IP_ADDRESS')} className="text-red-500 hover:text-red-700 transition-colors" title="Excluir">✕</button>
                             </div>
                           </div>
                         ))}
@@ -336,12 +336,12 @@ export default function InfraPage() {
               </div>
               {formRemote.show && (
                 <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 mb-6 flex flex-col sm:flex-row gap-3">
-                  <input type="text" placeholder="Código (Ex: 1 234 567 890)" value={formRemote.code} onChange={e => setFormRemote({ ...formRemote, code: e.target.value })} className={`flex-1 p-3 rounded-xl border border-slate-200 bg-white text-slate-700 placeholder-slate-400 font-mono focus:ring-2 ${colors.ring} focus:border-transparent focus:outline-none transition-all`} />
-                  <select value={formRemote.sectorId} onChange={e => setFormRemote({ ...formRemote, sectorId: e.target.value })} className={`flex-1 p-3 rounded-xl border border-slate-200 bg-white text-slate-700 focus:ring-2 ${colors.ring} focus:border-transparent focus:outline-none transition-all`}>
+                  <input type="text" placeholder="Código (Ex: 1 234 567 890)" value={formRemote.code} onChange={e => setFormRemote({ ...formRemote, code: e.target.value })} className={`flex-1 p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 placeholder-slate-400 font-mono focus:ring-2 ${colors.ring} focus:border-transparent focus:outline-none transition-all`} />
+                  <select value={formRemote.sectorId} onChange={e => setFormRemote({ ...formRemote, sectorId: e.target.value })} className={`flex-1 p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 focus:ring-2 ${colors.ring} focus:border-transparent focus:outline-none transition-all`}>
                     <option value="">Selecione o Setor...</option>
                     {data.sectors.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
-                  <input type="text" placeholder="Patrimônio / Num. Série" value={formRemote.patrimony} onChange={e => setFormRemote({ ...formRemote, patrimony: e.target.value })} className={`flex-1 p-3 rounded-xl border border-slate-200 bg-white text-slate-700 placeholder-slate-400 focus:ring-2 ${colors.ring} focus:border-transparent focus:outline-none transition-all`} />
+                  <input type="text" placeholder="Patrimônio / Num. Série" value={formRemote.patrimony} onChange={e => setFormRemote({ ...formRemote, patrimony: e.target.value })} className={`flex-1 p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 placeholder-slate-400 focus:ring-2 ${colors.ring} focus:border-transparent focus:outline-none transition-all`} />
                   <button onClick={() => handleSave("CREATE_REMOTE_ACCESS", formRemote, () => setFormRemote({ id: "", code: "", sectorId: "", patrimony: "", show: false }))} className={`${colors.btn} text-white font-semibold py-3 px-6 rounded-xl transition-all shadow-sm text-sm`}>
                     {formRemote.id ? "Atualizar" : "Salvar"}
                   </button>
@@ -364,8 +364,8 @@ export default function InfraPage() {
                           </span>
                           <div className="flex items-center gap-3">
                             <button onClick={() => copyToClipboard(r.code)} className="text-slate-400 hover:text-orange-600 transition-colors text-xs" title="Copiar Código">📋</button>
-                            <button onClick={() => { setFormRemote({ id: r.id, code: r.code, patrimony: r.patrimony, sectorId: r.sectorId, show: true }); window.scrollTo({top:0, behavior:'smooth'}); }} className="text-orange-400 hover:text-orange-600 transition-colors text-xs" title="Editar">✏️</button>
-                            <button onClick={() => confirmDelete(r.id, 'REMOTE_ACCESS')} className="text-red-400 hover:text-red-600 transition-colors text-xs" title="Excluir">✕</button>
+                            <button onClick={() => { setFormRemote({ id: r.id, code: r.code, patrimony: r.patrimony, sectorId: r.sectorId, show: true }); window.scrollTo({top:0, behavior:'smooth'}); }} className="text-orange-600 hover:text-orange-800 transition-colors text-xs" title="Editar">✏️</button>
+                            <button onClick={() => confirmDelete(r.id, 'REMOTE_ACCESS')} className="text-red-500 hover:text-red-700 transition-colors text-xs" title="Excluir">✕</button>
                           </div>
                         </div>
                       ))}

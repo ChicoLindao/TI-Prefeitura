@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { createAuditLog } from "@/lib/logger"; // <-- Importa o helper
 
 export async function GET() {
   try {
@@ -41,6 +42,16 @@ export async function GET() {
         await prisma.deviceType.create({ data: { name: nome } });
       }
     }
+
+    // 🔴 REGISTRO NO LOG DE AUDITORIA
+    // Como ninguém está logado, usamos um nome genérico. 
+    // É importante registrar isso pois recriar/resetar a senha do admin é uma ação crítica.
+    await createAuditLog({
+      userEmail: "SISTEMA", 
+      action: "ATUALIZAR",
+      resource: "Setup Inicial (Reset)",
+      details: "Script de setup rodou: Verificou/criou o Administrador Chefe, Setores e Dispositivos básicos.",
+    });
 
     return NextResponse.json({ message: "Admin e dados básicos FORÇADOS com sucesso via método seguro! Pode fazer o login." });
   } catch (error: any) {

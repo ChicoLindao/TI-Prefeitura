@@ -2,13 +2,17 @@ export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import nodemailer from "nodemailer";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { triggerUpdate } from "@/lib/ws";
+import { createAuditLog } from "@/lib/logger"; 
+import { sendProfessionalEmail } from "@/lib/mailer"; // 🔴 IMPORTAÇÃO DO NOVO MAILER
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+
     const maintenances = await prisma.internalMaintenance.findMany({
       include: { deviceType: true, originSector: true, techs: { select: { id: true, name: true } }, logs: { include: { tech: { select: { name: true } } }, orderBy: { createdAt: 'desc' } } },
       orderBy: { receiveDate: "asc" }
@@ -22,6 +26,8 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
+    if (!session || !session.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    
     const techId = (session?.user as any)?.id;
     const body = await req.json();
     const { patrimony, brand, equipmentUser, userEmail, originSectorId, deviceTypeId, reportedProblem } = body;
@@ -37,20 +43,30 @@ export async function POST(req: Request) {
     if (techId) logData.tech = { connect: { id: techId } };
     await prisma.internalMaintenanceLog.create({ data: logData });
 
+    await createAuditLog({
+      userEmail: session.user.email as string,
+      action: "CRIAR",
+      resource: "Bancada Interna",
+      details: `Registrou manualmente um equipamento (${newMaintenance.deviceType.name}) do setor "${newMaintenance.originSector.name}" na bancada da TI.`,
+    });
+
     await triggerUpdate('nova-demanda', { tipo: 'EQUIPAMENTO', setor: newMaintenance.originSector?.name || 'TI' });
 
-    // 📧 E-MAIL: QUANDO A TI REGISTRA O EQUIPAMENTO PARA O USUÁRIO
+    // 📧 E-MAIL PROFISSIONAL: QUANDO A TI REGISTRA O EQUIPAMENTO PARA O USUÁRIO
     if (newMaintenance.userEmail) {
       try {
-        const transporter = nodemailer.createTransport({ service: "gmail", auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS } });
-        await transporter.sendMail({
-          from: process.env.EMAIL_USER,
+        await sendProfessionalEmail({
           to: newMaintenance.userEmail,
           subject: `Ordem de Serviço Gerada: ${newMaintenance.deviceType.name}`,
-          html: `<h3>Olá, ${newMaintenance.equipmentUser}!</h3>
-                 <p>O equipamento <strong>${newMaintenance.deviceType.name}</strong> do setor <strong>${newMaintenance.originSector.name}</strong> foi registrado em nossa bancada de TI.</p>
-                 <p><strong>Problema relatado:</strong> ${newMaintenance.reportedProblem}</p>
-                 <p>Você será notificado por e-mail a cada atualização.</p>`
+          title: "Ordem de Serviço Registrada",
+          greeting: `Olá, ${newMaintenance.equipmentUser}!`,
+          message: "O equipamento foi recebido e registrado com sucesso em nossa bancada de TI. Você receberá atualizações automáticas sobre o andamento da manutenção.",
+          ticketData: [
+            { label: "Equipamento", value: newMaintenance.deviceType.name },
+            { label: "Setor de Origem", value: newMaintenance.originSector.name },
+            { label: "Problema Relatado", value: newMaintenance.reportedProblem },
+            { label: "Status Inicial", value: "Pendente 🕒" }
+          ]
         });
       } catch (error) { console.error("Erro email:", error); }
     }

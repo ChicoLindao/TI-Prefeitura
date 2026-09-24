@@ -5,6 +5,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 import SocketListener from '@/app/components/SocketListener';
 import SessionGuard from "@/app/components/SessionGuard";
+import Providers from "@/app/components/Providers"; // <-- Importamos o Provedor aqui
 
 export default async function DashboardLayout({
   children,
@@ -19,14 +20,17 @@ export default async function DashboardLayout({
 
   return (
     <section>
-      {/* O ouvinte fica aqui, escondido, operando em todas as telas do Dashboard! */}
-      <SocketListener />
-      
-      {/* O vigia agora atua como um escudo protetor. Se a sessão expirar, 
-          ele desmonta o {children} do HTML e exibe apenas o aviso. */}
-      <SessionGuard>
-        {children}
-      </SessionGuard>
+      {/* O Providers fornece a sessão do NextAuth para todos os componentes client-side */}
+      <Providers>
+        {/* O ouvinte fica aqui, escondido, operando em todas as telas do Dashboard! */}
+        <SocketListener />
+        
+        {/* O vigia agora atua como um escudo protetor. Se a sessão expirar, 
+            ele desmonta o {children} do HTML e exibe apenas o aviso. */}
+        <SessionGuard>
+          {children}
+        </SessionGuard>
+      </Providers>
     </section>
   );
 }

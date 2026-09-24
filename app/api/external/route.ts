@@ -1,14 +1,21 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import nodemailer from "nodemailer";
 import { triggerUpdate } from "@/lib/ws";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { createAuditLog } from "@/lib/logger"; 
+import { sendProfessionalEmail } from "@/lib/mailer"; // 🔴 IMPORTAÇÃO DO NOVO MAILER
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) return NextResponse.json({ error: "Acesso negado" }, { status: 401 });
+
     const services = await prisma.externalService.findMany({
       include: { sector: true, techs: { select: { id: true, name: true } } },
       orderBy: { createdAt: 'desc' }
     });
+    
     // Filtrando apenas os que não possuem "(Inativo)" no nome:
     const sectors = await prisma.sector.findMany({
       where: { NOT: { name: { contains: "(Inativo)" } } },
@@ -22,27 +29,39 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) return NextResponse.json({ error: "Acesso negado" }, { status: 401 });
+
     const { sectorId, personAttended, userEmail, description } = await req.json();
     
     const newService = await prisma.externalService.create({
       data: { sectorId, personAttended, userEmail, description, status: "PENDENTE" },
-      include: { sector: true } 
+      include: { sector: true }
+    });
+
+    await createAuditLog({
+      userEmail: session.user.email as string,
+      action: "CRIAR",
+      resource: "Chamados Externos",
+      details: `Criou manualmente um chamado para o setor "${newService.sector.name}" no nome de: ${personAttended}.`,
     });
 
     await triggerUpdate('nova-demanda', { tipo: 'CHAMADO', setor: newService.sector?.name || 'TI' });
 
-    // 📧 E-MAIL: QUANDO A TI CRIA O CHAMADO PARA O USUÁRIO
+    // 📧 E-MAIL PROFISSIONAL: QUANDO A TI CRIA O CHAMADO PARA O USUÁRIO
     if (newService.userEmail) {
       try {
-        const transporter = nodemailer.createTransport({ service: "gmail", auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS } });
-        await transporter.sendMail({
-          from: process.env.EMAIL_USER,
+        await sendProfessionalEmail({
           to: newService.userEmail,
-          subject: `Chamado Aberto Pela TI: ${newService.sector.name}`,
-          html: `<h3>Olá, ${newService.personAttended}!</h3>
-                 <p>Um chamado para o setor <strong>${newService.sector.name}</strong> foi registrado por nossa equipe para você.</p>
-                 <p><strong>Descrição:</strong> ${newService.description}</p>
-                 <p>Você será notificado por e-mail a cada atualização.</p>`
+          subject: `Chamado Aberto Por Técnico: ${newService.sector.name}`,
+          title: "Novo Chamado Registrado",
+          greeting: `Olá, ${newService.personAttended}!`,
+          message: "Um chamado foi registrado internamente por nossa equipe técnica em seu nome. Você receberá atualizações automáticas sobre o andamento do serviço.",
+          ticketData: [
+            { label: "Setor", value: newService.sector.name },
+            { label: "Descrição", value: newService.description },
+            { label: "Status Inicial", value: "Pendente 🕒" }
+          ]
         });
       } catch (error) { console.error("Erro no email:", error); }
     }
