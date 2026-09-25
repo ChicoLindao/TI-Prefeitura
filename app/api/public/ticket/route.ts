@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { sendNotificationEmail } from "@/lib/mailer";
-import { triggerUpdate } from "@/lib/ws"; // <-- Importação do gatilho
-import { createAuditLog } from "@/lib/logger"; // <-- Importamos o Helper de Logs
+import { sendProfessionalEmail } from "@/lib/mailer"; // 🔴 IMPORTAÇÃO CORRIGIDA
+import { triggerUpdate } from "@/lib/ws"; 
+import { createAuditLog } from "@/lib/logger"; 
 
 export async function GET() {
   const sectors = await prisma.sector.findMany({ orderBy: { name: 'asc' } });
@@ -78,13 +78,20 @@ export async function POST(req: Request) {
         try {
           const alertEmails = await prisma.alertEmail.findMany();
           for (const admin of alertEmails) {
-            await sendNotificationEmail(
-              admin.email,
-              `⚠️ ALERTA: Spam bloqueado (${blockType})`,
-              `<p>O sistema bloqueou a abertura de chamados.</p>
-               <p><b>Gatilho:</b> ${blockType} (${identifier}).</p>
-               <p><b>IP de Origem:</b> ${triggerIp} ${isIpWhitelisted ? '(Ignorado pela Whitelist)' : ''}</p>`
-            );
+            // 🔵 ENVIO DO ALERTA DE SPAM COM O NOVO DESIGN
+            await sendProfessionalEmail({
+              to: admin.email,
+              subject: `⚠️ ALERTA DE SEGURANÇA: Spam bloqueado (${blockType})`,
+              title: "Bloqueio Anti-Spam Acionado",
+              greeting: `Olá, Equipa de TI!`,
+              message: "O sistema de segurança detetou e bloqueou tentativas excessivas de abertura de chamados na rota pública.",
+              isAlert: true,
+              ticketData: [
+                { label: "Tipo de Bloqueio", value: blockType },
+                { label: "Origem (E-mail)", value: identifier },
+                { label: "IP Registado", value: `${triggerIp} ${isIpWhitelisted ? '(Ignorado pela Whitelist)' : ''}` }
+              ]
+            });
           }
           await prisma.ipRateLimit.update({
             where: { ip: throttleKey },
@@ -95,7 +102,7 @@ export async function POST(req: Request) {
         }
       }
 
-      if (isWeekend) return "Fim de semana detectado. Limite de 1 chamado por dia. Tente amanhã.";
+      if (isWeekend) return "Fim de semana detetado. Limite de 1 chamado por dia. Tente amanhã.";
       if (!isBusinessHours) return "Fora do horário comercial. Limite de 1 chamado. Tente a partir das 08h.";
       return `Muitas solicitações. Aguarde 15 minutos.`;
     };
@@ -155,7 +162,7 @@ export async function POST(req: Request) {
         userEmail: data.userEmail,
         action: "CRIAR",
         resource: "Portal Público (Chamados)",
-        details: `Novo chamado aberto para o setor "${newTicket.sector.name}" pelo usuário: ${data.personAttended}.`,
+        details: `Novo chamado aberto para o setor "${newTicket.sector.name}" pelo utilizador: ${data.personAttended}.`,
       });
 
       // 👉 Gatilho WebSocket para Chamados Externos:
@@ -197,7 +204,7 @@ export async function POST(req: Request) {
       // 👉 Gatilho WebSocket para Equipamentos:
       await triggerUpdate('nova-demanda', { tipo: 'EQUIPAMENTO', setor: newMaintenance.originSector.name });
 
-      return NextResponse.json({ message: "Equipamento registrado!" }, { status: 201 });
+      return NextResponse.json({ message: "Equipamento registado!" }, { status: 201 });
     }
   } catch (error) {
     console.error("Erro na API:", error);
