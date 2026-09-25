@@ -38,7 +38,6 @@ export async function POST(req: Request) {
       include: { sector: true }
     });
 
-    // 🔴 CORREÇÃO DO TYPESCRIPT: Proteção contra null
     await createAuditLog({
       userEmail: session.user?.email || "sistema@ti.com",
       action: "CRIAR",
@@ -51,7 +50,7 @@ export async function POST(req: Request) {
     if (newService.userEmail) {
       try {
         await sendProfessionalEmail({
-          to: newService.userEmail as string, // 🔴 CORREÇÃO DO TYPESCRIPT AQUI
+          to: newService.userEmail || "", // 🔴 CORRIGIDO DEFINITIVAMENTE PARA TS
           subject: `Chamado Aberto Por Técnico: ${newService.sector.name}`,
           title: "Novo Chamado Registrado",
           greeting: `Olá, ${newService.personAttended}!`,

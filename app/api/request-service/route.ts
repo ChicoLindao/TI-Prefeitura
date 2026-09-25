@@ -93,7 +93,7 @@ export async function POST(req: Request) {
             for (const alertRecord of alertEmailsList) {
               if (alertRecord.email) {
                 await sendProfessionalEmail({
-                  to: alertRecord.email as string, // 🔴 CORREÇÃO DO TYPESCRIPT AQUI
+                  to: alertRecord.email || "", // 🔴 CORRIGIDO DEFINITIVAMENTE PARA TS
                   subject: `⚠️ ALERTA DE SEGURANÇA: Spam bloqueado (${blockType})`,
                   title: "Bloqueio Anti-Spam Acionado",
                   greeting: `Olá, Equipe!`,
@@ -154,7 +154,6 @@ export async function POST(req: Request) {
       include: { sector: true }
     });
 
-    // 🔴 CORREÇÃO DO TYPESCRIPT: Proteção contra null
     await createAuditLog({
       userEmail: userEmail || "usuario@publico.com",
       action: "CRIAR",
@@ -167,7 +166,7 @@ export async function POST(req: Request) {
     if (newTicket.userEmail) {
       try {
         await sendProfessionalEmail({
-          to: newTicket.userEmail as string, // 🔴 CORREÇÃO DO TYPESCRIPT AQUI
+          to: newTicket.userEmail || "", // 🔴 CORRIGIDO DEFINITIVAMENTE PARA TS
           subject: `Chamado Registrado na TI: ${newTicket.sector.name}`,
           title: "Chamado Aberto com Sucesso",
           greeting: `Olá, ${newTicket.personAttended}!`,
