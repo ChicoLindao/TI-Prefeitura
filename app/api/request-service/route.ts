@@ -93,7 +93,7 @@ export async function POST(req: Request) {
             for (const alertRecord of alertEmailsList) {
               if (alertRecord.email) {
                 await sendProfessionalEmail({
-                  to: alertRecord.email || "", // 🔴 CORRIGIDO DEFINITIVAMENTE PARA TS
+                  to: alertRecord.email || "", 
                   subject: `⚠️ ALERTA DE SEGURANÇA: Spam bloqueado (${blockType})`,
                   title: "Bloqueio Anti-Spam Acionado",
                   greeting: `Olá, Equipe!`,
@@ -166,14 +166,14 @@ export async function POST(req: Request) {
     if (newTicket.userEmail) {
       try {
         await sendProfessionalEmail({
-          to: newTicket.userEmail || "", // 🔴 CORRIGIDO DEFINITIVAMENTE PARA TS
+          to: newTicket.userEmail || "", 
           subject: `Chamado Registrado na TI: ${newTicket.sector.name}`,
           title: "Chamado Aberto com Sucesso",
           greeting: `Olá, ${newTicket.personAttended}!`,
           message: "A sua solicitação foi registrada com sucesso. Nossa equipe de TI já foi notificada e em breve avaliará o seu pedido.",
           ticketData: [
             { label: "Setor Solicitante", value: newTicket.sector.name },
-            { label: "Problema Relatado", value: newTicket.description },
+            { label: "Problema Relatado", value: newTicket.description || "Não informado" }, // 🔴 Correção TS aqui
             { label: "Status Atual", value: "Pendente 🕒" }
           ]
         });

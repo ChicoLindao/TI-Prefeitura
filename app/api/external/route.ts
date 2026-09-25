@@ -50,14 +50,14 @@ export async function POST(req: Request) {
     if (newService.userEmail) {
       try {
         await sendProfessionalEmail({
-          to: newService.userEmail || "", // 🔴 CORRIGIDO DEFINITIVAMENTE PARA TS
+          to: newService.userEmail || "", 
           subject: `Chamado Aberto Por Técnico: ${newService.sector.name}`,
           title: "Novo Chamado Registrado",
           greeting: `Olá, ${newService.personAttended}!`,
           message: "Um chamado foi registrado internamente por nossa equipe técnica em seu nome. Você receberá atualizações automáticas sobre o andamento do serviço.",
           ticketData: [
             { label: "Setor", value: newService.sector.name },
-            { label: "Descrição", value: newService.description },
+            { label: "Descrição", value: newService.description || "Não informada" }, // 🔴 Correção TS aqui
             { label: "Status Inicial", value: "Pendente 🕒" }
           ]
         });
