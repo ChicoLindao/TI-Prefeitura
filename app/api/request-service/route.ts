@@ -34,7 +34,6 @@ export async function POST(req: Request) {
     const MAX_TICKETS = isBusinessHours ? 3 : 1; 
     const TIME_WINDOW_MS = isBusinessHours ? 15 * 60 * 1000 : 24 * 60 * 60 * 1000;
 
-    // --- 1. VERIFICA BLOQUEIO DE E-MAIL ---
     if (userEmail) {
       const blockRecord = await prisma.blockedEmail.findUnique({
         where: { email: userEmail }
@@ -51,7 +50,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // --- 2. PROTEÇÃO POR IP ---
     const cfIp = req.headers.get("cf-connecting-ip");
     const forwardedIp = req.headers.get("x-forwarded-for");
     const realIp = req.headers.get("x-real-ip");
@@ -89,7 +87,6 @@ export async function POST(req: Request) {
 
       if (now.getTime() - lastWarningTime > 60 * 60 * 1000) {
         try {
-          // 🔴 CORREÇÃO: Busca APENAS os e-mails que foram cadastrados na tela de Segurança
           const alertEmailsList = await prisma.alertEmail.findMany();
           
           if (alertEmailsList.length > 0) {
@@ -101,7 +98,7 @@ export async function POST(req: Request) {
                   title: "Bloqueio Anti-Spam Acionado",
                   greeting: `Olá, Equipe!`,
                   message: "O sistema de segurança detectou e bloqueou um número excessivo de tentativas de abertura de chamados na página pública do sistema.",
-                  isAlert: true, // Deixa o e-mail vermelho
+                  isAlert: true,
                   ticketData: [
                     { label: "Tipo de Bloqueio", value: blockType },
                     { label: "Origem (IP ou E-mail)", value: identifier },
@@ -152,14 +149,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: blockInfo.message, expiresAt: blockInfo.expiresAt }, { status: 429 });
     }
 
-    // --- CRIAÇÃO DO CHAMADO ---
     const newTicket = await prisma.externalService.create({
       data: { sectorId, personAttended, userEmail, description, status: "PENDENTE" },
       include: { sector: true }
     });
 
+    // 🔴 CORREÇÃO DO TYPESCRIPT: Proteção contra null
     await createAuditLog({
-      userEmail: userEmail,
+      userEmail: userEmail || "usuario@publico.com",
       action: "CRIAR",
       resource: "Portal Público (Chamados)",
       details: `Novo chamado aberto para o setor "${newTicket.sector.name}" pelo usuário: ${personAttended}.`,

@@ -4,7 +4,7 @@ import { triggerUpdate } from "@/lib/ws";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { createAuditLog } from "@/lib/logger"; 
-import { sendProfessionalEmail } from "@/lib/mailer"; // 🔴 IMPORTAÇÃO DO NOVO MAILER
+import { sendProfessionalEmail } from "@/lib/mailer";
 
 export async function GET() {
   try {
@@ -16,7 +16,6 @@ export async function GET() {
       orderBy: { createdAt: 'desc' }
     });
     
-    // Filtrando apenas os que não possuem "(Inativo)" no nome:
     const sectors = await prisma.sector.findMany({
       where: { NOT: { name: { contains: "(Inativo)" } } },
       orderBy: { name: 'asc' }
@@ -39,8 +38,9 @@ export async function POST(req: Request) {
       include: { sector: true }
     });
 
+    // 🔴 CORREÇÃO DO TYPESCRIPT: Proteção contra null
     await createAuditLog({
-      userEmail: session.user.email as string,
+      userEmail: session.user?.email || "sistema@ti.com",
       action: "CRIAR",
       resource: "Chamados Externos",
       details: `Criou manualmente um chamado para o setor "${newService.sector.name}" no nome de: ${personAttended}.`,
@@ -48,7 +48,6 @@ export async function POST(req: Request) {
 
     await triggerUpdate('nova-demanda', { tipo: 'CHAMADO', setor: newService.sector?.name || 'TI' });
 
-    // 📧 E-MAIL PROFISSIONAL: QUANDO A TI CRIA O CHAMADO PARA O USUÁRIO
     if (newService.userEmail) {
       try {
         await sendProfessionalEmail({
