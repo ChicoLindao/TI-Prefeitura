@@ -51,7 +51,7 @@ export async function POST(req: Request) {
     if (newService.userEmail) {
       try {
         await sendProfessionalEmail({
-          to: newService.userEmail,
+          to: newService.userEmail as string, // 🔴 CORREÇÃO DO TYPESCRIPT AQUI
           subject: `Chamado Aberto Por Técnico: ${newService.sector.name}`,
           title: "Novo Chamado Registrado",
           greeting: `Olá, ${newService.personAttended}!`,

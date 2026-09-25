@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { createAuditLog } from "@/lib/logger";
-import { triggerUpdate } from "@/lib/ws"; // <-- Importamos o WebSocket
+import { triggerUpdate } from "@/lib/ws";
 
 export async function POST(req: Request) {
   try {
@@ -28,14 +28,14 @@ export async function POST(req: Request) {
       data: { forceLogoutAt: new Date() }
     });
 
+    // 🔴 CORREÇÃO DO TYPESCRIPT AQUI
     await createAuditLog({
-      userEmail: session.user.email as string,
+      userEmail: session?.user?.email || "sistema@ti.com",
       action: "ATUALIZAR",
       resource: "Controle de Sessão",
       details: `Forçou a desconexão (logout) do usuário: ${userTarget.name} (${userTarget.email}).`
     });
 
-    // 🔴 DISPARA O WEBSOCKET AVISANDO A REDE SOBRE A EXPULSÃO
     await triggerUpdate('nova-demanda', { tipo: 'FORCE_LOGOUT', alvoId: userId });
 
     return NextResponse.json({ success: true, message: "Sessão encerrada com sucesso." });

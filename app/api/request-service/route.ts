@@ -93,7 +93,7 @@ export async function POST(req: Request) {
             for (const alertRecord of alertEmailsList) {
               if (alertRecord.email) {
                 await sendProfessionalEmail({
-                  to: alertRecord.email,
+                  to: alertRecord.email as string, // 🔴 CORREÇÃO DO TYPESCRIPT AQUI
                   subject: `⚠️ ALERTA DE SEGURANÇA: Spam bloqueado (${blockType})`,
                   title: "Bloqueio Anti-Spam Acionado",
                   greeting: `Olá, Equipe!`,
@@ -167,7 +167,7 @@ export async function POST(req: Request) {
     if (newTicket.userEmail) {
       try {
         await sendProfessionalEmail({
-          to: newTicket.userEmail,
+          to: newTicket.userEmail as string, // 🔴 CORREÇÃO DO TYPESCRIPT AQUI
           subject: `Chamado Registrado na TI: ${newTicket.sector.name}`,
           title: "Chamado Aberto com Sucesso",
           greeting: `Olá, ${newTicket.personAttended}!`,
