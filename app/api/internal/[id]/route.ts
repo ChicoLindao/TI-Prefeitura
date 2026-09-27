@@ -34,8 +34,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const body = await req.json();
 
   if (body.actionType === "UPDATE_STATUS") {
+    // 🔴 FORMATA O STATUS, E SE FOR "EM_ANDAMENTO" NA BANCADA, VIRA "EM CONSERTO"
+    let formattedStatus = body.status.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+    if (body.status === 'EM_ANDAMENTO') formattedStatus = 'Em Conserto';
+
     const updatedMaint = await prisma.internalMaintenance.update({ where: { id }, data: { status: body.status }, include: { deviceType: true } });
-    const dataToSave: any = { action: `Status alterado para ${body.status.replace(/_/g, ' ')}`, internalMaintenance: { connect: { id } } };
+    
+    const dataToSave: any = { action: `Status alterado para ${formattedStatus}`, internalMaintenance: { connect: { id } } };
     if (techId) dataToSave.tech = { connect: { id: techId } };
     await prisma.internalMaintenanceLog.create({ data: dataToSave });
     
@@ -43,7 +48,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       userEmail: session.user.email as string,
       action: "ATUALIZAR",
       resource: "Setor",
-      details: `Alterou o status do equipamento "${updatedMaint.deviceType.name}" para: ${body.status.replace(/_/g, ' ')}`,
+      details: `Alterou o status do equipamento "${updatedMaint.deviceType.name}" para: ${formattedStatus}`,
     });
 
     await triggerUpdate('nova-demanda', { tipo: 'EQUIPAMENTO', setor: 'Status Atualizado' });
@@ -58,7 +63,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           message: "O status da Ordem de Serviço do seu equipamento foi modificado pela nossa equipe.",
           ticketData: [
             { label: "Equipamento", value: updatedMaint.deviceType.name },
-            { label: "Novo Status", value: body.status.replace(/_/g, ' ') }
+            { label: "Novo Status", value: formattedStatus }
           ]
         });
       } catch (e) {}
@@ -100,38 +105,45 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   if (body.actionType === "UPDATE_TECHS") {
-    await prisma.internalMaintenance.update({ where: { id }, data: { techs: { set: body.techIds.map((tId: string) => ({ id: tId })) } } });
-    
-    // 🔴 NOVO: Define a mensagem do websocket dinamicamente
-    const wsMessage = body.removedTechId ? 'Técnico Removido' : 'Técnico Atribuído';
+    // 🔴 LÓGICA INTELIGENTE DE COMPARAÇÃO
+    const oldRecord = await prisma.internalMaintenance.findUnique({ where: { id }, include: { techs: true, deviceType: true, originSector: true }});
+    const oldTechIds = oldRecord?.techs.map((t: any) => t.id) || [];
+    const newTechIds = body.techIds || [];
+
+    const added = newTechIds.filter((tId: string) => !oldTechIds.includes(tId));
+    const removed = oldTechIds.filter((tId: string) => !newTechIds.includes(tId));
+
+    let wsMessage = 'Técnicos Atualizados';
+    if (added.length > 0 && removed.length === 0) wsMessage = 'Técnico Atribuído';
+    else if (removed.length > 0 && added.length === 0) wsMessage = 'Técnico Removido';
+
+    await prisma.internalMaintenance.update({ where: { id }, data: { techs: { set: newTechIds.map((tId: string) => ({ id: tId })) } } });
     await triggerUpdate('nova-demanda', { tipo: 'EQUIPAMENTO', setor: wsMessage });
 
-    const maint = await prisma.internalMaintenance.findUnique({ where: { id }, include: { deviceType: true, originSector: true }});
-    
-    if (maint) {
+    if (oldRecord) {
       await createAuditLog({
         userEmail: session.user.email as string,
         action: "ATUALIZAR",
         resource: "Setor (Técnicos)",
-        details: `Modificou a lista de técnicos responsáveis pelo equipamento "${maint.deviceType.name}".`,
+        details: `Modificou a lista de técnicos responsáveis pelo equipamento "${oldRecord.deviceType.name}".`,
       });
     }
 
-    if (body.addedTechId) {
-      const tech = await prisma.user.findUnique({ where: { id: body.addedTechId } });
+    if (added.length > 0) {
+      const tech = await prisma.user.findUnique({ where: { id: added[0] } });
       
-      if (tech?.email && maint) {
+      if (tech?.email && oldRecord) {
         try {
           await sendProfessionalEmail({
             to: tech.email,
-            subject: `Nova OS: ${maint.deviceType.name}`,
+            subject: `Nova OS: ${oldRecord.deviceType.name}`,
             title: "Ordem de Serviço Designada",
             greeting: `Olá, ${tech.name}!`,
             message: "Você foi marcado como responsável pela manutenção de um equipamento no Setor. Por favor, acesse o painel para verificar os detalhes.",
             ticketData: [
-              { label: "Equipamento", value: maint.deviceType.name },
-              { label: "Marca", value: maint.brand || "Não informada" },
-              { label: "Nº de Patrimônio", value: maint.patrimony || "Sem patrimônio" }
+              { label: "Equipamento", value: oldRecord.deviceType.name },
+              { label: "Marca", value: oldRecord.brand || "Não informada" },
+              { label: "Nº de Patrimônio", value: oldRecord.patrimony || "Sem patrimônio" }
             ],
             buttonText: "Acessar Ordem de Serviço",
             buttonLink: `${process.env.NEXTAUTH_URL}/dashboard/internal/${id}`
@@ -139,16 +151,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         } catch (e) {}
       }
 
-      if (maint?.userEmail && tech) {
+      if (oldRecord?.userEmail && tech) {
         try {
           await sendProfessionalEmail({
-            to: maint.userEmail,
-            subject: `Técnico Designado: ${maint.deviceType.name}`,
+            to: oldRecord.userEmail,
+            subject: `Técnico Designado: ${oldRecord.deviceType.name}`,
             title: "Manutenção em Andamento",
             greeting: "Olá!",
             message: "A Ordem de Serviço do seu equipamento já foi assumida e um técnico acaba de ser atribuído para a manutenção.",
             ticketData: [
-              { label: "Equipamento", value: maint.deviceType.name },
+              { label: "Equipamento", value: oldRecord.deviceType.name },
               { label: "Técnico Responsável", value: tech.name }
             ]
           });

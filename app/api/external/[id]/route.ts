@@ -34,8 +34,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const body = await req.json();
 
   if (body.actionType === "UPDATE_STATUS") {
+    // 🔴 FORMATA O STATUS PARA FICAR BONITO (Ex: EM_ANDAMENTO -> Em Andamento)
+    const formattedStatus = body.status.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+
     const updatedService = await prisma.externalService.update({ where: { id }, data: { status: body.status }, include: { sector: true } });
-    const dataToSave: any = { description: `Status alterado para ${body.status.replace(/_/g, ' ')}`, type: "SISTEMA", externalService: { connect: { id } } };
+    
+    const dataToSave: any = { description: `Status alterado para ${formattedStatus}`, type: "SISTEMA", externalService: { connect: { id } } };
     if (techId) dataToSave.tech = { connect: { id: techId } };
     await prisma.externalServiceLog.create({ data: dataToSave });
 
@@ -43,7 +47,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       userEmail: session.user.email as string,
       action: "ATUALIZAR",
       resource: "Chamados Externos",
-      details: `Alterou o status do chamado do setor "${updatedService.sector.name}" para: ${body.status.replace(/_/g, ' ')}`,
+      details: `Alterou o status do chamado do setor "${updatedService.sector.name}" para: ${formattedStatus}`,
     });
 
     await triggerUpdate('nova-demanda', { tipo: 'CHAMADO', setor: 'Status Atualizado' });
@@ -58,7 +62,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           message: "O status da sua solicitação de atendimento foi modificado pela nossa equipe.",
           ticketData: [
             { label: "Setor", value: updatedService.sector.name },
-            { label: "Novo Status", value: body.status.replace(/_/g, ' ') }
+            { label: "Novo Status", value: formattedStatus }
           ]
         });
       } catch (e) {}
@@ -100,38 +104,46 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   if (body.actionType === "UPDATE_TECHS") {
-    await prisma.externalService.update({ where: { id }, data: { techs: { set: body.techIds.map((tId: string) => ({ id: tId })) } } });
-    
-    // 🔴 NOVO: Define a mensagem do websocket dinamicamente
-    const wsMessage = body.removedTechId ? 'Técnico Removido' : 'Técnico Atribuído';
+    // 🔴 LÓGICA INTELIGENTE DE COMPARAÇÃO
+    const oldRecord = await prisma.externalService.findUnique({ where: { id }, include: { techs: true, sector: true }});
+    const oldTechIds = oldRecord?.techs.map((t: any) => t.id) || [];
+    const newTechIds = body.techIds || [];
+
+    const added = newTechIds.filter((tId: string) => !oldTechIds.includes(tId));
+    const removed = oldTechIds.filter((tId: string) => !newTechIds.includes(tId));
+
+    let wsMessage = 'Técnicos Atualizados';
+    if (added.length > 0 && removed.length === 0) wsMessage = 'Técnico Atribuído';
+    else if (removed.length > 0 && added.length === 0) wsMessage = 'Técnico Removido';
+
+    await prisma.externalService.update({ where: { id }, data: { techs: { set: newTechIds.map((tId: string) => ({ id: tId })) } } });
     await triggerUpdate('nova-demanda', { tipo: 'CHAMADO', setor: wsMessage });
 
-    const srv = await prisma.externalService.findUnique({ where: { id }, include: { sector: true }});
-    
-    if (srv) {
+    if (oldRecord) {
       await createAuditLog({
         userEmail: session.user.email as string,
         action: "ATUALIZAR",
         resource: "Chamados Externos (Técnicos)",
-        details: `Modificou a lista de técnicos responsáveis pelo chamado do setor "${srv.sector.name}".`,
+        details: `Modificou a lista de técnicos responsáveis pelo chamado do setor "${oldRecord.sector.name}".`,
       });
     }
 
-    if (body.addedTechId) {
-      const tech = await prisma.user.findUnique({ where: { id: body.addedTechId } });
+    // Se adicionou alguém, manda e-mail
+    if (added.length > 0) {
+      const tech = await prisma.user.findUnique({ where: { id: added[0] } });
       
-      if (tech?.email && srv) {
+      if (tech?.email && oldRecord) {
         try {
           await sendProfessionalEmail({
             to: tech.email,
-            subject: `Novo Atendimento Atribuído: ${srv.sector.name}`,
+            subject: `Novo Atendimento Atribuído: ${oldRecord.sector.name}`,
             title: "Atendimento Designado",
             greeting: `Olá, ${tech.name}!`,
             message: `Você foi marcado como responsável por um chamado externo. Por favor, acesse o painel para verificar os detalhes.`,
             ticketData: [
-              { label: "Setor do Chamado", value: srv.sector.name },
-              { label: "Utilizador", value: srv.personAttended || "Não informado" },
-              { label: "Problema Relatado", value: srv.description || "Não informado" }
+              { label: "Setor do Chamado", value: oldRecord.sector.name },
+              { label: "Utilizador", value: oldRecord.personAttended || "Não informado" },
+              { label: "Problema Relatado", value: oldRecord.description || "Não informado" }
             ],
             buttonText: "Acessar Atendimento",
             buttonLink: `${process.env.NEXTAUTH_URL}/dashboard/external/${id}` 
@@ -139,16 +151,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         } catch (e) {}
       }
       
-      if (srv?.userEmail && tech) {
+      if (oldRecord?.userEmail && tech) {
         try {
           await sendProfessionalEmail({
-            to: srv.userEmail,
-            subject: `Técnico Designado: ${srv.sector.name}`,
+            to: oldRecord.userEmail,
+            subject: `Técnico Designado: ${oldRecord.sector.name}`,
             title: "Atendimento em Andamento",
             greeting: "Olá!",
             message: "O seu chamado já foi visualizado e um técnico responsável acaba de ser atribuído para a resolução.",
             ticketData: [
-              { label: "Setor", value: srv.sector.name },
+              { label: "Setor", value: oldRecord.sector.name },
               { label: "Técnico Responsável", value: tech.name }
             ]
           });
