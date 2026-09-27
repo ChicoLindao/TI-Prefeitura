@@ -170,7 +170,7 @@ export async function POST(req: Request) {
           subject: `Chamado Registrado na TI: ${newTicket.sector.name}`,
           title: "Chamado Aberto com Sucesso",
           greeting: `Olá, ${newTicket.personAttended}!`,
-          message: "A sua solicitação foi registrada com sucesso. Nossa equipe de TI já foi notificada e em breve avaliará o seu pedido.",
+          message: "A sua solicitação foi registrada com sucesso. Nossa equipe já foi notificada e em breve avaliará o seu pedido.",
           ticketData: [
             { label: "Setor Solicitante", value: newTicket.sector.name },
             { label: "Problema Relatado", value: newTicket.description || "Não informado" }, // 🔴 Correção TS aqui

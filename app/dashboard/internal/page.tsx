@@ -114,7 +114,7 @@ export default function InternalMaintenance() {
         {/* Pending list */}
         <div className="flex items-end justify-between mb-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-slate-400 font-bold mb-1">Bancada</p>
+            <p className="text-xs uppercase tracking-[0.18em] text-slate-400 font-bold mb-1">Setor</p>
             <h2 className="text-2xl font-bold text-slate-800">Equipamentos Pendentes</h2>
           </div>
           <span className="bg-blue-50 text-blue-700 border border-blue-100 px-3 py-1.5 rounded-full text-sm font-bold">{maintenances.length} ativos</span>
@@ -142,7 +142,7 @@ export default function InternalMaintenance() {
               </a>
             </div>
           ))}
-          {maintenances.length === 0 && <p className="text-slate-400 italic">Nenhum equipamento pendente na bancada.</p>}
+          {maintenances.length === 0 && <p className="text-slate-400 italic">Nenhum equipamento pendente no Setor.</p>}
         </div>
       </div>
     </div>

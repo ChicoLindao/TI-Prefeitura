@@ -6,7 +6,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { triggerUpdate } from "@/lib/ws";
 import { createAuditLog } from "@/lib/logger"; 
-import { sendProfessionalEmail } from "@/lib/mailer"; // 🔴 IMPORTAÇÃO DO NOVO MAILER
+import { sendProfessionalEmail } from "@/lib/mailer";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
@@ -42,7 +42,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     await createAuditLog({
       userEmail: session.user.email as string,
       action: "ATUALIZAR",
-      resource: "Bancada Interna",
+      resource: "Setor",
       details: `Alterou o status do equipamento "${updatedMaint.deviceType.name}" para: ${body.status.replace(/_/g, ' ')}`,
     });
 
@@ -55,7 +55,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           subject: `Atualização no Equipamento: ${updatedMaint.deviceType.name}`,
           title: "Status da OS Atualizado",
           greeting: "Olá!",
-          message: "O status da Ordem de Serviço do seu equipamento foi modificado pela nossa equipe na bancada.",
+          message: "O status da Ordem de Serviço do seu equipamento foi modificado pela nossa equipe.",
           ticketData: [
             { label: "Equipamento", value: updatedMaint.deviceType.name },
             { label: "Novo Status", value: body.status.replace(/_/g, ' ') }
@@ -76,7 +76,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       await createAuditLog({
         userEmail: session.user.email as string,
         action: "ATUALIZAR",
-        resource: "Bancada Interna (Histórico)",
+        resource: "Setor (Histórico)",
         details: `Adicionou um histórico na OS do equipamento "${maint.deviceType.name}": "${body.actionText}"`,
       });
     }
@@ -109,7 +109,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       await createAuditLog({
         userEmail: session.user.email as string,
         action: "ATUALIZAR",
-        resource: "Bancada Interna (Técnicos)",
+        resource: "Setor (Técnicos)",
         details: `Modificou a lista de técnicos responsáveis pelo equipamento "${maint.deviceType.name}".`,
       });
     }
@@ -125,10 +125,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
             subject: `Nova OS: ${maint.deviceType.name}`,
             title: "Ordem de Serviço Designada",
             greeting: `Olá, ${tech.name}!`,
-            message: "Você foi marcado como responsável pela manutenção de um equipamento na bancada. Por favor, acesse o painel para verificar os detalhes.",
+            message: "Você foi marcado como responsável pela manutenção de um equipamento no Setor. Por favor, acesse o painel para verificar os detalhes.",
             ticketData: [
               { label: "Equipamento", value: maint.deviceType.name },
-              { label: "Setor de Origem", value: maint.originSector.name }
+              { label: "Marca", value: maint.brand || "Não informada" },
+              { label: "Nº de Patrimônio", value: maint.patrimony || "Sem patrimônio" }
             ],
             buttonText: "Acessar Ordem de Serviço",
             buttonLink: `${process.env.NEXTAUTH_URL}/dashboard/internal/${id}`
@@ -172,7 +173,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
       await createAuditLog({
         userEmail: session!.user!.email as string,
         action: "DELETAR",
-        resource: "Bancada Interna",
+        resource: "Setor",
         details: `Excluiu definitivamente a OS do equipamento "${maint.deviceType.name}".`,
       });
     }

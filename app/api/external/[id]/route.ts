@@ -6,7 +6,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { triggerUpdate } from "@/lib/ws";
 import { createAuditLog } from "@/lib/logger"; 
-import { sendProfessionalEmail } from "@/lib/mailer"; // 🔴 IMPORTAÇÃO DO NOVO MAILER
+import { sendProfessionalEmail } from "@/lib/mailer";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
@@ -125,12 +125,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
             subject: `Novo Atendimento Atribuído: ${srv.sector.name}`,
             title: "Atendimento Designado",
             greeting: `Olá, ${tech.name}!`,
-            message: `Você foi marcado como responsável por um chamado externo da TI. Por favor, acesse o painel para verificar os detalhes.`,
+            message: `Você foi marcado como responsável por um chamado externo. Por favor, acesse o painel para verificar os detalhes.`,
             ticketData: [
-              { label: "Setor do Chamado", value: srv.sector.name }
+              { label: "Setor do Chamado", value: srv.sector.name },
+              { label: "Utilizador", value: srv.personAttended || "Não informado" },
+              { label: "Problema Relatado", value: srv.description || "Não informado" }
             ],
             buttonText: "Acessar Atendimento",
-            buttonLink: `${process.env.NEXTAUTH_URL}/dashboard/external/${id}` // Botão para o técnico abrir o chamado
+            buttonLink: `${process.env.NEXTAUTH_URL}/dashboard/external/${id}` 
           });
         } catch (e) {}
       }

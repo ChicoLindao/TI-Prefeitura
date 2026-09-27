@@ -94,15 +94,22 @@ export default async function DashboardPage() {
 
     myResolvedExt = await prisma.externalService.findMany({
       where: { status: 'ENTREGUE', techs: { some: { id: user.id } } },
-      include: { sector: true, techs: { select: { id: true, name: true } }, logs: { orderBy: { createdAt: 'desc' }, take: 1 } },
-      orderBy: { createdAt: 'desc' }
+      select: { id: true }
     });
 
     myResolvedInt = await prisma.internalMaintenance.findMany({
       where: { status: 'ENTREGUE', techs: { some: { id: user.id } } },
-      include: { deviceType: true, originSector: true, techs: { select: { id: true, name: true } }, logs: { orderBy: { createdAt: 'desc' }, take: 1 } },
-      orderBy: { receiveDate: 'desc' }
+      select: { id: true }
     });
+
+    // 🔴 NOVO: Preenche a tabela de relatório apenas com os dados do próprio técnico logado
+    relatorio = [{
+      id: user.id,
+      name: user.name,
+      activeExt: myActiveExt.length,
+      activeInt: myActiveInt.length,
+      totalResolved: myResolvedExt.length + myResolvedInt.length
+    }];
   }
 
   const renderCard = (item: any, type: 'EXT' | 'INT') => {
@@ -228,7 +235,7 @@ export default async function DashboardPage() {
           </>
         ) : (
           <>
-            <h2 className="text-2xl font-bold text-slate-800 mb-6">Meus Chamados Pendentes (Prioridade)</h2>
+            <h2 className="text-2xl font-bold text-slate-800 mb-6">Meus Chamados Pendentes</h2>
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-12">
               <div>
                 <h3 className="text-xl font-bold text-blue-700 mb-4 border-b-2 border-blue-600 pb-2">Atendimentos em Aberto ({myActiveExt.length})</h3>
@@ -244,7 +251,7 @@ export default async function DashboardPage() {
               </div>
             </div>
 
-            <h2 className="text-2xl font-bold text-slate-800 mb-6 border-t border-slate-200 pt-8">Fila Global (Outros Chamados em Aberto)</h2>
+            <h2 className="text-2xl font-bold text-slate-800 mb-6 border-t border-slate-200 pt-8">Fila Global</h2>
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-12">
               <div className="opacity-80 hover:opacity-100 transition-opacity">
                 <h3 className="text-lg font-bold text-slate-800 mb-4 border-b-2 border-blue-300 pb-2">Atendimentos em Aberto ({globalActiveExt.length})</h3>
@@ -260,20 +267,33 @@ export default async function DashboardPage() {
               </div>
             </div>
 
-            <h2 className="text-2xl font-bold text-slate-800 mb-6 border-t border-slate-200 pt-8">Meu Histórico de Concluídos</h2>
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-              <div>
-                <h3 className="text-xl font-bold text-emerald-700 mb-4 border-b-2 border-green-500 pb-2">Atendimentos Concluídos ({myResolvedExt.length})</h3>
-                <div className="space-y-4 max-h-[450px] overflow-y-auto pr-2">
-                  {myResolvedExt.length === 0 ? <p className="text-slate-400 italic">Nenhum histórico.</p> : myResolvedExt.map(srv => renderCard(srv, 'EXT'))}
-                </div>
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-emerald-700 mb-4 border-b-2 border-green-500 pb-2">Bancada Concluída ({myResolvedInt.length})</h3>
-                <div className="space-y-4 max-h-[450px] overflow-y-auto pr-2">
-                  {myResolvedInt.length === 0 ? <p className="text-slate-400 italic">Nenhum histórico.</p> : myResolvedInt.map(maint => renderCard(maint, 'INT'))}
-                </div>
-              </div>
+            {/* 🔴 NOVO: Tabela de Histórico Pessoal do Técnico Padrão */}
+            <h2 className="text-2xl font-bold text-slate-800 mb-4 border-t border-slate-200 pt-8">Meu Resumo de Atendimentos</h2>
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="p-4 font-bold text-slate-600">Técnico</th>
+                    <th className="p-4 font-bold text-slate-600 text-center">Chamados em Aberto</th>
+                    <th className="p-4 font-bold text-slate-600 text-center">Equipamentos no Setor em Aberto</th>
+                    <th className="p-4 font-bold text-slate-600 text-center">Total Finalizados</th>
+                    <th className="p-4 font-bold text-slate-600 text-center">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {relatorio.map((tech) => (
+                    <tr key={tech.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors text-slate-700">
+                      <td className="p-4 font-bold">{tech.name}</td>
+                      <td className="p-4 text-center text-red-600 font-bold">{tech.activeExt}</td>
+                      <td className="p-4 text-center text-red-600 font-bold">{tech.activeInt}</td>
+                      <td className="p-4 text-center font-bold text-emerald-600 text-xl">{tech.totalResolved}</td>
+                      <td className="p-4 text-center">
+                        <a href={`/dashboard/tech/${tech.id}`} className="bg-slate-800 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-slate-700 transition-colors">Ver Histórico →</a>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </>
         )}

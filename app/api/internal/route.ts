@@ -19,7 +19,7 @@ export async function GET() {
     });
     return NextResponse.json(maintenances);
   } catch (error) {
-    return NextResponse.json({ error: "Erro ao buscar bancada interna" }, { status: 500 });
+    return NextResponse.json({ error: "Erro ao buscar no Setor" }, { status: 500 });
   }
 }
 
@@ -39,15 +39,15 @@ export async function POST(req: Request) {
       include: { originSector: true, deviceType: true } 
     });
 
-    const logData: any = { action: "Equipamento cadastrado e inserido na fila da bancada.", internalMaintenance: { connect: { id: newMaintenance.id } } };
+    const logData: any = { action: "Equipamento cadastrado e inserido na fila.", internalMaintenance: { connect: { id: newMaintenance.id } } };
     if (techId) logData.tech = { connect: { id: techId } };
     await prisma.internalMaintenanceLog.create({ data: logData });
 
     await createAuditLog({
       userEmail: session.user.email as string,
       action: "CRIAR",
-      resource: "Bancada Interna",
-      details: `Registrou manualmente um equipamento (${newMaintenance.deviceType.name}) do setor "${newMaintenance.originSector.name}" na bancada da TI.`,
+      resource: "Setor",
+      details: `Registrou manualmente um equipamento (${newMaintenance.deviceType.name}) so setor "${newMaintenance.originSector.name}" na fila.`,
     });
 
     await triggerUpdate('nova-demanda', { tipo: 'EQUIPAMENTO', setor: newMaintenance.originSector?.name || 'TI' });
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
           subject: `Ordem de Serviço Gerada: ${newMaintenance.deviceType.name}`,
           title: "Ordem de Serviço Registrada",
           greeting: `Olá, ${newMaintenance.equipmentUser}!`,
-          message: "O equipamento foi recebido e registrado com sucesso em nossa bancada de TI. Você receberá atualizações automáticas sobre o andamento da manutenção.",
+          message: "O equipamento foi recebido e registrado com sucesso em nosso setor. Você receberá atualizações automáticas sobre o andamento da manutenção.",
           ticketData: [
             { label: "Equipamento", value: newMaintenance.deviceType.name },
             { label: "Setor de Origem", value: newMaintenance.originSector.name },

@@ -68,12 +68,12 @@ export default function AuditLogs() {
         </form>
       </div>
 
-      <div className="overflow-x-auto h-[400px] overflow-y-auto">
+      <div className="overflow-x-auto h-[400px] overflow-y-auto border-b border-gray-200">
         {loading ? (
           <p className="text-gray-500 text-sm p-4">Carregando logs...</p>
         ) : (
           <table className="w-full text-left text-sm">
-            <thead className="bg-gray-100 text-gray-600 sticky top-0 shadow-sm">
+            <thead className="bg-gray-100 text-gray-600 sticky top-0 shadow-sm z-10">
               <tr>
                 <th className="p-3">Data/Hora</th>
                 <th className="p-3">Usuário</th>
@@ -117,6 +117,12 @@ export default function AuditLogs() {
           </table>
         )}
       </div>
+      
+      {!loading && !searchTerm && logs.length > 0 && (
+        <div className="mt-3 text-right">
+          <span className="text-[11px] text-gray-400 font-medium">Exibindo as 15 atividades mais recentes.</span>
+        </div>
+      )}
     </div>
   );
 }

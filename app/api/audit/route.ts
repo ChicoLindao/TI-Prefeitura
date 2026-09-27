@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
@@ -28,7 +30,8 @@ export async function GET(req: Request) {
     const logs = await prisma.auditLog.findMany({
       where: whereClause,
       orderBy: { createdAt: 'desc' },
-      take: search ? 500 : 150, // Se estiver pesquisando, traz mais resultados
+      // 🔴 LIMITE APLICADO AQUI: 15 na visão padrão, 50 para buscas.
+      take: search ? 50 : 15, 
     });
 
     return NextResponse.json(logs);

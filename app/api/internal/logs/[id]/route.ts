@@ -20,7 +20,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
         userEmail: session.user.email as string,
         action: "DELETAR",
         resource: "Histórico de OS",
-        details: `Apagou uma mensagem do histórico de um Equipamento na Bancada.`,
+        details: `Apagou uma mensagem do histórico de um Equipamento no Setor.`,
       });
 
       return NextResponse.json({ message: "Histórico interno apagado!" }, { status: 200 });
@@ -58,7 +58,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         userEmail: session.user.email as string,
         action: "ATUALIZAR",
         resource: "Histórico de OS",
-        details: `Editou uma mensagem no histórico de um Equipamento na Bancada para: "${text}"`,
+        details: `Editou uma mensagem no histórico de um Equipamento no Setor para: "${text}"`,
       });
 
       return NextResponse.json({ success: true });
