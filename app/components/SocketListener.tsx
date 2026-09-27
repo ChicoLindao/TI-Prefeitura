@@ -39,9 +39,9 @@ export default function SocketListener() {
 
       // 🟡 3. INTERCEPTA ALERTAS DE SEGURANÇA (Bloqueios Anti-Spam)
       if (payload.tipo === 'SECURITY_ALERT') {
-        window.dispatchEvent(new Event("atualiza-dados")); // Avisa a tela GlobalSettings para recarregar
+        window.dispatchEvent(new Event("atualiza-dados")); 
         router.refresh();
-        return; // Impede que abra pop-up azul na tela!
+        return; 
       }
 
       // 🔵 4. SE FOR CHAMADO OU EQUIPAMENTO, CRIA O POP-UP NORMALMENTE
@@ -54,7 +54,18 @@ export default function SocketListener() {
         audio.play().catch(e => console.log("Áudio bloqueado pelo navegador."));
       } catch (e) {}
 
-      const isUpdate = ["Status Atualizado", "Novo Histórico", "Técnico Atribuído", "Chamado Excluído", "OS Excluída", "Atualização"].includes(payload.setor);
+      // 🔴 CORREÇÃO AQUI: Várias novas palavras-chave adicionadas
+      const isUpdate = [
+        "Status Atualizado", 
+        "Novo Histórico", 
+        "Técnico Atribuído", 
+        "Técnico Removido", 
+        "Técnicos Atualizados", 
+        "Chamado Excluído", 
+        "OS Excluída", 
+        "Atualização"
+      ].includes(payload.setor);
+
       const tituloNotificacao = isUpdate ? "Atualização no Sistema TI" : "NOVA DEMANDA TI!";
       const corpoNotificacao = isUpdate 
         ? `${payload.tipo === 'CHAMADO' ? 'Chamado' : 'Equipamento'} - ${payload.setor}`
@@ -75,7 +86,18 @@ export default function SocketListener() {
 
   if (!notification) return null;
 
-  const isUpdate = ["Status Atualizado", "Novo Histórico", "Técnico Atribuído", "Chamado Excluído", "OS Excluída", "Atualização"].includes(notification.setor);
+  // 🔴 CORREÇÃO AQUI TAMBÉM (Tem que espelhar a lógica de cima para o pop-up HTML)
+  const isUpdate = [
+    "Status Atualizado", 
+    "Novo Histórico", 
+    "Técnico Atribuído", 
+    "Técnico Removido", 
+    "Técnicos Atualizados", 
+    "Chamado Excluído", 
+    "OS Excluída", 
+    "Atualização"
+  ].includes(notification.setor);
+  
   const tituloPopUp = isUpdate ? "ATUALIZAÇÃO!" : "NOVA DEMANDA!";
   const pulseColor = isUpdate ? "bg-amber-400" : "bg-red-500";
 
