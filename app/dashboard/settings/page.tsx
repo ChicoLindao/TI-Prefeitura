@@ -85,7 +85,7 @@ export default function GlobalSettings() {
     if (res.ok) { 
       resetUserForm(); 
       fetchData(); 
-      showToast(isEditing ? "Usuário atualizado com sucesso!" : "Usuário salvo! (Senha inicial: suporteTI@2025)", "success"); 
+      showToast(isEditing ? "Usuário atualizado com sucesso!" : "Usuário salvo! (Senha inicial = senha do setor)", "success"); 
     } else {
       showToast("Erro ao salvar usuário.", "error");
     }
@@ -104,7 +104,7 @@ export default function GlobalSettings() {
     setModal({
       show: true,
       title: "Resetar Senha",
-      message: "Tem certeza que deseja resetar a senha deste usuário para suporteTI@2025?",
+      message: "Tem certeza que deseja resetar a senha deste usuário para a senha do setor?",
       onConfirm: async () => {
         const res = await fetch("/api/users", {
           method: "PUT",

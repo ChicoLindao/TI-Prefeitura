@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) return NextResponse.json({ error: "E-mail já em uso." }, { status: 400 });
     
-    const hashedPassword = await bcrypt.hash("suporteTI@2025", 10);
+    const hashedPassword = await bcrypt.hash("adm@26pfm", 10);
     await prisma.user.create({ data: { name, email, password: hashedPassword, role } });
     
     await createAuditLog({
@@ -67,7 +67,7 @@ export async function PUT(req: Request) {
     let updateData: any = { name, email, role };
     
     if (resetPassword) {
-      updateData.password = await bcrypt.hash("suporteTI@2025", 10);
+      updateData.password = await bcrypt.hash("adm@26pfm", 10);
     }
     
     await prisma.user.update({ where: { id }, data: updateData });
