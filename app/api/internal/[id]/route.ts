@@ -101,7 +101,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   if (body.actionType === "UPDATE_TECHS") {
     await prisma.internalMaintenance.update({ where: { id }, data: { techs: { set: body.techIds.map((tId: string) => ({ id: tId })) } } });
-    await triggerUpdate('nova-demanda', { tipo: 'EQUIPAMENTO', setor: 'Técnico Atribuído' });
+    
+    // 🔴 NOVO: Define a mensagem do websocket dinamicamente
+    const wsMessage = body.removedTechId ? 'Técnico Removido' : 'Técnico Atribuído';
+    await triggerUpdate('nova-demanda', { tipo: 'EQUIPAMENTO', setor: wsMessage });
 
     const maint = await prisma.internalMaintenance.findUnique({ where: { id }, include: { deviceType: true, originSector: true }});
     
@@ -117,7 +120,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (body.addedTechId) {
       const tech = await prisma.user.findUnique({ where: { id: body.addedTechId } });
       
-      // 📧 E-MAIL PARA O TÉCNICO
       if (tech?.email && maint) {
         try {
           await sendProfessionalEmail({
@@ -137,7 +139,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         } catch (e) {}
       }
 
-      // 📧 E-MAIL PARA O SOLICITANTE
       if (maint?.userEmail && tech) {
         try {
           await sendProfessionalEmail({
