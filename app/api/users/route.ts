@@ -4,12 +4,12 @@ import bcrypt from "bcryptjs";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { createAuditLog } from "@/lib/logger";
+import { triggerUpdate } from "@/lib/ws"; // 🔴 IMPORTAÇÃO DO WEBSOCKET ADICIONADA
 
 export async function GET() {
   try {
     const users = await prisma.user.findMany({
       where: { NOT: { name: { contains: "(Inativo)" } } },
-      // 👇 Adicionado forceLogoutAt aqui
       select: { id: true, name: true, email: true, role: true, lastLogin: true, forceLogoutAt: true },
       orderBy: { name: "asc" }
     });
@@ -65,19 +65,30 @@ export async function PUT(req: Request) {
 
     const { id, name, email, role, resetPassword } = await req.json();
     let updateData: any = { name, email, role };
+    const currentUser = session.user as any;
     
     if (resetPassword) {
       updateData.password = await bcrypt.hash("adm@26pfm", 10);
+    }
+
+    // 🔴 FORÇA O LOGOUT NO BANCO DE DADOS (Se não for o próprio admin alterando a si mesmo)
+    if (id !== currentUser.id) {
+      updateData.forceLogoutAt = new Date();
     }
     
     await prisma.user.update({ where: { id }, data: updateData });
 
     await createAuditLog({
-      userEmail: session.user.email as string,
+      userEmail: currentUser.email as string,
       action: "ATUALIZAR",
       resource: "Técnicos (Usuários)",
       details: `Atualizou os dados do usuário: ${name} (${email}). ${resetPassword ? "[Senha Redefinida pelo Admin]" : ""}`,
     });
+
+    // 🔴 GATILHO WEBSOCKET: Desconecta o utilizador instantaneamente na tela dele
+    if (id !== currentUser.id) {
+      await triggerUpdate('nova-demanda', { tipo: 'FORCE_LOGOUT', alvoId: id });
+    }
 
     return NextResponse.json({ message: "Atualizado com sucesso!" }, { status: 200 });
   } catch (error) {
@@ -120,14 +131,21 @@ export async function DELETE(req: Request) {
         details: `Removeu definitivamente o usuário do sistema: ${userTarget.name} (${userTarget.email}).`,
       });
 
+      // 🔴 GATILHO WEBSOCKET: Excluiu? Desconecta na hora!
+      await triggerUpdate('nova-demanda', { tipo: 'FORCE_LOGOUT', alvoId: id });
+
       return NextResponse.json({ success: true, message: "Usuário removido definitivamente do sistema." });
       
     } catch (dbError: any) {
+      // Falha por Foreign Key (Histórico existe) -> Inativa o usuário
       if (dbError.code === 'P2003') {
         if (!userTarget.name.includes("(Inativo)")) {
           await prisma.user.update({
             where: { id },
-            data: { name: `${userTarget.name} (Inativo)` }
+            data: { 
+              name: `${userTarget.name} (Inativo)`,
+              forceLogoutAt: new Date() // Força logout no BD
+            }
           });
 
           await createAuditLog({
@@ -136,6 +154,9 @@ export async function DELETE(req: Request) {
             resource: "Técnicos (Usuários)",
             details: `Inativou o usuário por possuir histórico de chamados: ${userTarget.name} (${userTarget.email}).`,
           });
+
+          // 🔴 GATILHO WEBSOCKET: Inativou? Desconecta na hora também!
+          await triggerUpdate('nova-demanda', { tipo: 'FORCE_LOGOUT', alvoId: id });
 
           return NextResponse.json({ success: true, message: "Usuário inativado para preservação do histórico de chamados." });
         }
